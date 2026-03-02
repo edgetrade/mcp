@@ -21,27 +21,36 @@ jobs:
           - x86_64-apple-darwin
           - aarch64-apple-darwin
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          fetch-tags: true
 
       - name: Setup Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           cache: true
           cache-shared-key: ${{ matrix.target }}
+      
+      - name: Find Tag
+        id: tagger
+        run: |
+          echo "tag=$(git describe --abbrev=0 --tags)" >> "$GITHUB_OUTPUT"
 
       - name: Build Release
         uses: zijiren233/cargo-cross@v1
         with:
           command: build
           targets: ${{ matrix.target }}
-      
+
       - name: Prepare binary for upload
         run: |
           if [ -f target/${{ matrix.target }}/release/edge ]; then
-            rsync --archive --mkpath target/${{ matrix.target }}/release/edge dist/edge-${{ matrix.target }}
+            rsync --archive --mkpath target/${{ matrix.target }}/release/edge dist/edge-${{ steps.tagger.outputs.tag }}-${{ matrix.target }}
           elif [ -f target/${{ matrix.target }}/release/edge.exe ]; then
-            rsync --archive --mkpath target/${{ matrix.target }}/release/edge.exe dist/edge-${{ matrix.target }}.exe
+            rsync --archive --mkpath target/${{ matrix.target }}/release/edge.exe dist/edge-${{ steps.tagger.outputs.tag }}-${{ matrix.target }}.exe
           fi
       
       - name: Upload artifacts
@@ -56,6 +65,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          fetch-tags: true
       
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -72,11 +84,8 @@ jobs:
 
       - name: Find Tag
         id: tagger
-        uses: jimschubert/query-tag-action@v1
-        with:
-          include: 'v*'
-          exclude: '*-rc*'
-          commit-ish: 'HEAD~'
+        run: |
+          echo "tag=$(git describe --abbrev=0 --tags)" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         env:
@@ -98,7 +107,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-      
+        with:
+          fetch-depth: 1
+          fetch-tags: true
+          
       - name: Make Node Happy
         run: corepack enable
       
@@ -109,17 +121,14 @@ jobs:
 
       - name: Find Tag
         id: tagger
-        uses: jimschubert/query-tag-action@v1
-        with:
-          include: 'v*'
-          exclude: '*-rc*'
-          commit-ish: 'HEAD~'
+        run: |
+          echo "tag=$(git describe --abbrev=0 --tags | sed 's/^v//')" >> "$GITHUB_OUTPUT"
 
       - name: Publish to npm
         run: | 
           # See https://github.com/actions/setup-node/issues/1440
           unset NODE_AUTH_TOKEN
-          npm version "$(echo "${{steps.tagger.outputs.tag}}" | sed 's/^v//')" --no-git-tag-version
+          npm version "${{steps.tagger.outputs.tag}}" --no-git-tag-version
           npm publish --access=public
 
   publish-openclaw:
@@ -127,7 +136,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      
+        with:
+          fetch-depth: 1
+          fetch-tags: true
+          
       - name: Make Node Happy
         run: corepack enable
       
@@ -137,16 +149,13 @@ jobs:
   
       - name: Find Tag
         id: tagger
-        uses: jimschubert/query-tag-action@v1
-        with:
-          include: 'v*'
-          exclude: '*-rc*'
-          commit-ish: 'HEAD~'
+        run: |
+          echo "tag=$(git describe --abbrev=0 --tags | sed 's/^v//')" >> "$GITHUB_OUTPUT"
 
       - name: Publish to ClawHub
         run: |
           npx clawhub@latest login --token ${{ secrets.CLAWHUB_TOKEN }} --no-browser
-          npx clawhub@latest publish plugins/openclaw --slug=edge --name=Edge.Trade --version=$(echo "${{steps.tagger.outputs.tag}}" | sed 's/^v//')
+          npx clawhub@latest publish plugins/openclaw --slug=edge --name=Edge.Trade --version=${{steps.tagger.outputs.tag}}
         env:
           CLAWHUB_TOKEN: ${{ secrets.CLAWHUB_TOKEN }}
 
@@ -159,7 +168,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-      
+        with:
+          fetch-depth: 1
+          
       - name: Create marketplace.json
         run: |
           cat > marketplace.json << 'EOF'
