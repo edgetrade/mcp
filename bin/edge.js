@@ -13,11 +13,11 @@ function getBinaryPath() {
   let binaryName;
 
   if (platform === 'win32') {
-    binaryName = 'edge-x86_64-pc-windows-msvc.exe';
+    binaryName = 'edge-x86_64-pc-windows-gnu.exe';
   } else if (platform === 'darwin') {
     binaryName = arch === 'arm64' ? 'edge-aarch64-apple-darwin' : 'edge-x86_64-apple-darwin';
   } else if (platform === 'linux') {
-    binaryName = arch === 'arm64' ? 'edge-aarch64-unknown-linux-gnu' : 'edge-x86_64-unknown-linux-gnu';
+    binaryName = arch === 'arm64' ? 'edge-aarch64-unknown-linux-musl' : 'edge-x86_64-unknown-linux-musl';
   } else {
     console.error(`Unsupported platform: ${platform}-${arch}`);
     process.exit(1);

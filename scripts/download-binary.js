@@ -16,13 +16,13 @@ function getBinaryInfo() {
   let filename;
 
   if (platform === 'win32') {
-    target = 'x86_64-pc-windows-msvc';
+    target = 'x86_64-pc-windows-gnu';
     filename = `edge-${target}.exe`;
   } else if (platform === 'darwin') {
     target = arch === 'arm64' ? 'aarch64-apple-darwin' : 'x86_64-apple-darwin';
     filename = `edge-${target}`;
   } else if (platform === 'linux') {
-    target = arch === 'arm64' ? 'aarch64-unknown-linux-gnu' : 'x86_64-unknown-linux-gnu';
+    target = arch === 'arm64' ? 'aarch64-unknown-linux-musl' : 'x86_64-unknown-linux-musl';
     filename = `edge-${target}`;
   } else {
     console.error(`Unsupported platform: ${platform}-${arch}`);
