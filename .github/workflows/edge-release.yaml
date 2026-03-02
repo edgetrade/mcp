@@ -24,11 +24,11 @@ jobs:
             x86_64-apple-darwin
           profile: release
       
-      - name: Upload artifact
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: edge-${{ matrix.target }}
-          path: edge-${{ matrix.target }}*
+          name: edge-binaries
+          path: target/*/release/edge-trade*
 
   publish-edge:
     name: Publish to GitHub Releases
@@ -42,10 +42,19 @@ jobs:
         with:
           path: artifacts
       
-      - name: Flatten artifacts
+      - name: Prepare release binaries
         run: |
           mkdir -p release
-          find artifacts -type f -exec mv {} release/ \;
+          cd artifacts/edge-binaries/target
+          for target_dir in */; do
+            target="${target_dir%/}"
+            if [ -f "$target_dir/release/edge-trade" ]; then
+              cp "$target_dir/release/edge-trade" "../../../release/edge-trade-$target"
+            fi
+            if [ -f "$target_dir/release/edge-trade.exe" ]; then
+              cp "$target_dir/release/edge-trade.exe" "../../../release/edge-trade-$target.exe"
+            fi
+          done
       
       - name: Create GitHub Release
         env:
