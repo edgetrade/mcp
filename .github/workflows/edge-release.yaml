@@ -109,13 +109,12 @@ jobs:
           exclude: '*-rc*'
           commit-ish: 'HEAD~'
 
-      # Workaround: actions/setup-node sets NODE_AUTH_TOKEN to a placeholder
-      # value that interferes with npm OIDC auto-detection.
-      # See: https://github.com/actions/setup-node/issues/1440
+      # See https://github.com/actions/setup-node/issues/1440
       - name: Publish to npm
-        run: |
+        run: | 
+          unset NODE_AUTH_TOKEN
           npm version "$(echo "${{steps.tagger.outputs.tag}}" | sed 's/^v//')" --no-git-tag-version
-          NODE_AUTH_TOKEN="" npm publish
+          npm publish --access=public
 
   publish-openclaw:
     name: Publish to ClawHub
