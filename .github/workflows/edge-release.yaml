@@ -8,6 +8,14 @@ on:
 jobs:
   build-edge:
     name: Build Edge MCP binary
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-musl
+          # - aarch64-unknown-linux-musl
+          # - x86_64-pc-windows-gnu
+          # - x86_64-apple-darwin
+          # - aarch64-apple-darwin
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -16,42 +24,13 @@ jobs:
         uses: zijiren233/cargo-cross@v1
         with:
           command: build
-          targets: |
-            x86_64-unknown-linux-musl
-          profile: release
-            # aarch64-unknown-linux-musl
-            # x86_64-pc-windows-gnu
-            # aarch64-apple-darwin
-            # x86_64-apple-darwin
-      
-      - name: Debug - List build outputs
-        run: |
-          echo "=== Listing target directory structure ==="
-          ls -R target/ || true
-          echo "=== Finding edge-trade binaries ==="
-          find . -name "edge-trade*" -type f || true
-      
-      - name: Collect binaries
-        run: |
-          mkdir -p release-binaries
-          find target -name "edge-trade" -o -name "edge-trade.exe" | while read binary; do
-            target=$(echo "$binary" | cut -d'/' -f2)
-            if [ -f "$binary" ]; then
-              if [[ "$binary" == *.exe ]]; then
-                cp "$binary" "release-binaries/edge-trade-${target}.exe"
-              else
-                cp "$binary" "release-binaries/edge-trade-${target}"
-              fi
-              echo "Copied $binary to release-binaries/edge-trade-${target}"
-            fi
-          done
-          ls -lah release-binaries/
+          targets: ${{ matrix.target }}
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: edge-binaries
-          path: target/*/release/*
+          name: ${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/*
 
   publish-edge:
     name: Publish to GitHub Releases
