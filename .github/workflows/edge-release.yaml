@@ -115,7 +115,7 @@ jobs:
       - name: Publish to npm
         run: |
           npm version "$(echo "${{steps.tagger.outputs.tag}}" | sed 's/^v//')" --no-git-tag-version
-          unset NODE_AUTH_TOKEN && npm publish
+          NODE_AUTH_TOKEN="" npm publish
 
   publish-openclaw:
     name: Publish to ClawHub
