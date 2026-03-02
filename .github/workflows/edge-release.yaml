@@ -113,8 +113,6 @@ jobs:
         run: |
           npm version "$(echo "${{steps.tagger.outputs.tag}}" | sed 's/^v//')" --no-git-tag-version
           npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   publish-openclaw:
     name: Publish to ClawHub
