@@ -91,6 +91,11 @@ jobs:
     name: Publish to NPM
     needs: publish-edge
     runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
     steps:
       - uses: actions/checkout@v6
       
@@ -99,6 +104,7 @@ jobs:
       
       - uses: actions/setup-node@v6
         with:
+          node-version: 24
           registry-url: 'https://registry.npmjs.org'
 
       - name: Find Tag
@@ -147,6 +153,10 @@ jobs:
   publish-claude:
     name: Publish to Claude
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
     steps:
       - uses: actions/checkout@v6
       
