@@ -9,7 +9,6 @@ jobs:
   build-edge:
     name: Build Edge MCP binary
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v6
       
@@ -110,14 +109,6 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: yarn
-          cache-dependency-path: yarn.lock
-      
-      - name: Pull Node Cache
-        uses: actions/cache@v5
-        with:
-          path: node_modules
-          key: node-cache-${{ runner.os }}-x64-modules-${{ hashFiles('yarn.lock') }}
       
       - name: Validate OpenClaw skill
         run: npx clawhub@latest validate plugins/openclaw
