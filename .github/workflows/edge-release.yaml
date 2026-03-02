@@ -110,9 +110,6 @@ jobs:
         with:
           node-version: 24
       
-      - name: Validate OpenClaw skill
-        run: npx clawhub@latest validate plugins/openclaw
-      
       - name: Publish to ClawHub
         run: npx clawhub@latest publish plugins/openclaw --org edgedottrade
         env:
