@@ -1,23 +1,34 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+function getVersion() {
+  try {
+    const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'));
+    return pkg.version;
+  } catch {
+    return '0.1.0';
+  }
+}
+
 function getBinaryPath() {
   const platform = process.platform;
   const arch = process.arch;
+  const version = getVersion();
 
   let binaryName;
 
   if (platform === 'win32') {
-    binaryName = 'edge-x86_64-pc-windows-gnu.exe';
+    binaryName = `edge-v${version}-x86_64-pc-windows-gnu.exe`;
   } else if (platform === 'darwin') {
-    binaryName = arch === 'arm64' ? 'edge-aarch64-apple-darwin' : 'edge-x86_64-apple-darwin';
+    binaryName = arch === 'arm64' ? `edge-v${version}-aarch64-apple-darwin` : `edge-v${version}-x86_64-apple-darwin`;
   } else if (platform === 'linux') {
-    binaryName = arch === 'arm64' ? 'edge-aarch64-unknown-linux-musl' : 'edge-x86_64-unknown-linux-musl';
+    binaryName =
+      arch === 'arm64' ? `edge-v${version}-aarch64-unknown-linux-musl` : `edge-v${version}-x86_64-unknown-linux-musl`;
   } else {
     console.error(`Unsupported platform: ${platform}-${arch}`);
     process.exit(1);
