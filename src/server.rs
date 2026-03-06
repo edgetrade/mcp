@@ -14,8 +14,9 @@ use rmcp::{
 use serde_json::Value;
 use tokio::sync::{Mutex, RwLock};
 
+use crate::alerts::{AlertRegistration, AlertRegistry, new_alert_registry, next_alert_id};
 use crate::client::IrisClient;
-use crate::manifest::McpManifest;
+use crate::manifest::{ActionDef, McpManifest};
 use crate::subscriptions::{SubscriptionManager, WebhookDispatcher};
 
 /// Maps procedure → subscription id for active SSE subscriptions.
@@ -28,6 +29,8 @@ pub struct EdgeServer {
     subscription_manager: SubscriptionManager,
     webhook_dispatcher: WebhookDispatcher,
     active_subscriptions: ActiveSubscriptions,
+    alert_registry: AlertRegistry,
+    http_client: reqwest::Client,
 }
 
 impl ServerHandler for EdgeServer {
@@ -75,8 +78,24 @@ impl ServerHandler for EdgeServer {
         let webhook_dispatcher = self.webhook_dispatcher.clone();
         let active_subscriptions = self.active_subscriptions.clone();
         let manifest = self.manifest.clone();
+        let alert_registry = self.alert_registry.clone();
+        let http_client = self.http_client.clone();
 
         async move {
+            // Intercept locally-handled agent actions before any manifest lookup
+            // so they survive manifest refresh cycles.
+            if name == "agent" {
+                let local_action = args.get("action").and_then(|v| v.as_str()).unwrap_or("");
+                if local_action == "register_alert" || local_action == "unregister_alert" {
+                    let data = args
+                        .get("data")
+                        .cloned()
+                        .unwrap_or(Value::Object(Default::default()));
+                    return handle_local_action(local_action, data, client, manifest, alert_registry, http_client)
+                        .await;
+                }
+            }
+
             let tool = manifest
                 .read()
                 .await
@@ -93,10 +112,51 @@ impl ServerHandler for EdgeServer {
                 }
             };
 
-            if tool.kind == "subscription" {
+            // Resolve the action within the namespace tool.
+            let action_name = match args.get("action").and_then(|v| v.as_str()) {
+                Some(a) => a.to_string(),
+                None => {
+                    let available = tool
+                        .actions
+                        .iter()
+                        .map(|a| a.name.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    return Ok(CallToolResult::error(vec![Content::text(format!(
+                        "Missing required field: action. Available actions for '{name}': {available}"
+                    ))]));
+                }
+            };
+
+            let action_def: ActionDef = match tool.actions.iter().find(|a| a.name == action_name) {
+                Some(a) => a.clone(),
+                None => {
+                    let available = tool
+                        .actions
+                        .iter()
+                        .map(|a| a.name.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    return Ok(CallToolResult::error(vec![Content::text(format!(
+                        "Unknown action '{action_name}' for tool '{name}'. Available: {available}"
+                    ))]));
+                }
+            };
+
+            // `data` is the procedure input; fall back to empty object for no-input actions.
+            let data = args
+                .get("data")
+                .cloned()
+                .unwrap_or(Value::Object(Default::default()));
+
+            if action_def.kind == "local" {
+                return handle_local_action(&action_name, data, client, manifest, alert_registry, http_client).await;
+            }
+
+            if action_def.kind == "subscription" {
                 return handle_subscription(
-                    args,
-                    &tool.procedure,
+                    data,
+                    &action_def.procedure,
                     client,
                     sub_manager,
                     webhook_dispatcher,
@@ -105,7 +165,7 @@ impl ServerHandler for EdgeServer {
                 .await;
             }
 
-            match client.query(&tool.procedure, args).await {
+            match client.query(&action_def.procedure, data).await {
                 Ok(result) => Ok(CallToolResult::success(vec![Content::text(result.to_string())])),
                 Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
             }
@@ -243,12 +303,23 @@ impl EdgeServer {
         verbose: bool,
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let client = IrisClient::connect(url, api_key, verbose).await?;
+
+        {
+            let mut m = manifest.write().await;
+            inject_local_agent_actions(&mut m);
+        }
+
         Ok(Self {
             client,
             manifest,
             subscription_manager: SubscriptionManager::new(),
             webhook_dispatcher: WebhookDispatcher::new(),
             active_subscriptions: Arc::new(Mutex::new(std::collections::HashMap::new())),
+            alert_registry: new_alert_registry(),
+            http_client: reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(10))
+                .build()
+                .unwrap(),
         })
     }
 
@@ -276,6 +347,233 @@ impl EdgeServer {
         let listener = tokio::net::TcpListener::bind(&addr).await?;
         axum::serve(listener, router).await?;
         Ok(())
+    }
+}
+
+/// Injects the locally-handled `register_alert` / `unregister_alert` actions into
+/// the `agent` namespace tool so they appear in MCP `list_tools` responses.
+/// Called both at startup and after each manifest refresh.
+pub(crate) fn inject_local_agent_actions(manifest: &mut McpManifest) {
+    let Some(agent_tool) = manifest.tools.iter_mut().find(|t| t.name == "agent") else {
+        return;
+    };
+    if agent_tool
+        .actions
+        .iter()
+        .any(|a| a.name == "register_alert")
+    {
+        return;
+    }
+    agent_tool.actions.push(ActionDef {
+        name: "register_alert".to_string(),
+        description: "Register an alert subscription. Read edge://alerts first to discover available alert types and their input schemas. Delivers events via webhook, Redis stream, or Telegram.".to_string(),
+        input_schema: serde_json::json!({
+            "type": "object",
+            "properties": {
+                "alert_name": {
+                    "type": "string",
+                    "description": "Alert type name from edge://alerts (e.g. on_pair_updates)"
+                },
+                "input": {
+                    "type": "object",
+                    "description": "Filter parameters for the alert (see inputSchema in edge://alerts)"
+                },
+                "delivery": {
+                    "oneOf": [
+                        {
+                            "type": "object",
+                            "properties": {
+                                "type": { "type": "string", "const": "webhook" },
+                                "url": { "type": "string" },
+                                "secret": { "type": "string" }
+                            },
+                            "required": ["type", "url"]
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "type": { "type": "string", "const": "redis" },
+                                "url": { "type": "string" },
+                                "channel": { "type": "string" }
+                            },
+                            "required": ["type", "url", "channel"]
+                        },
+                        {
+                            "type": "object",
+                            "properties": {
+                                "type": { "type": "string", "const": "telegram" },
+                                "bot_token": { "type": "string" },
+                                "chat_id": { "type": "string" }
+                            },
+                            "required": ["type", "bot_token", "chat_id"]
+                        }
+                    ]
+                }
+            },
+            "required": ["alert_name", "input", "delivery"]
+        }),
+        procedure: "agent.register_alert".to_string(),
+        kind: "local".to_string(),
+    });
+    agent_tool.actions.push(ActionDef {
+        name: "unregister_alert".to_string(),
+        description: "Stop and remove a previously registered alert subscription.".to_string(),
+        input_schema: serde_json::json!({
+            "type": "object",
+            "properties": {
+                "alert_id": { "type": "string", "description": "Alert ID returned by register_alert" }
+            },
+            "required": ["alert_id"]
+        }),
+        procedure: "agent.unregister_alert".to_string(),
+        kind: "local".to_string(),
+    });
+}
+
+/// Routes locally-handled `agent` actions before they reach the TypeScript server.
+async fn handle_local_action(
+    action_name: &str,
+    data: Value,
+    client: IrisClient,
+    manifest: Arc<RwLock<McpManifest>>,
+    alert_registry: AlertRegistry,
+    http_client: reqwest::Client,
+) -> Result<CallToolResult, McpError> {
+    match action_name {
+        "register_alert" => handle_register_alert(data, client, manifest, alert_registry, http_client).await,
+        "unregister_alert" => handle_unregister_alert(data, client, alert_registry).await,
+        _ => Ok(CallToolResult::error(vec![Content::text(format!(
+            "Unknown local action: {action_name}"
+        ))])),
+    }
+}
+
+async fn handle_register_alert(
+    data: Value,
+    client: IrisClient,
+    manifest: Arc<RwLock<McpManifest>>,
+    alert_registry: AlertRegistry,
+    http_client: reqwest::Client,
+) -> Result<CallToolResult, McpError> {
+    let alert_name = match data.get("alert_name").and_then(|v| v.as_str()) {
+        Some(n) => n.to_string(),
+        None => {
+            return Ok(CallToolResult::error(vec![Content::text(
+                "Missing required field: alert_name. Read edge://alerts to see available alert types.",
+            )]));
+        }
+    };
+
+    let input = data
+        .get("input")
+        .cloned()
+        .unwrap_or(Value::Object(Default::default()));
+
+    let delivery_value = data.get("delivery").cloned().unwrap_or(Value::Null);
+    let delivery: crate::alerts::AlertDelivery = match serde_json::from_value(delivery_value) {
+        Ok(d) => d,
+        Err(e) => {
+            return Ok(CallToolResult::error(vec![Content::text(format!(
+                "Invalid delivery config: {e}. Use type=webhook|redis|telegram."
+            ))]));
+        }
+    };
+
+    // Resolve procedure from the edge://alerts resource content in the manifest.
+    let procedure = {
+        let m = manifest.read().await;
+        m.resources
+            .iter()
+            .find(|r| r.uri == "edge://alerts")
+            .and_then(|r| r.content.as_array())
+            .and_then(|arr| {
+                arr.iter()
+                    .find(|item| item.get("name").and_then(|n| n.as_str()) == Some(alert_name.as_str()))
+            })
+            .and_then(|item| item.get("procedure").and_then(|p| p.as_str()))
+            .map(|s| s.to_string())
+    };
+
+    let procedure = match procedure {
+        Some(p) => p,
+        None => {
+            return Ok(CallToolResult::error(vec![Content::text(format!(
+                "Unknown alert_name: '{alert_name}'. Read edge://alerts to see available types."
+            ))]));
+        }
+    };
+
+    let alert_id = next_alert_id();
+
+    let sub_id = match client
+        .subscribe_for_dispatch(
+            &procedure,
+            input.clone(),
+            crate::client::DispatchParams {
+                alert_id,
+                alert_name: alert_name.clone(),
+                delivery: delivery.clone(),
+                alert_registry: alert_registry.clone(),
+                http_client,
+            },
+        )
+        .await
+    {
+        Ok(id) => id,
+        Err(e) => {
+            return Ok(CallToolResult::error(vec![Content::text(format!(
+                "Failed to subscribe to {procedure}: {e}"
+            ))]));
+        }
+    };
+
+    alert_registry.lock().await.insert(
+        alert_id,
+        AlertRegistration {
+            alert_name,
+            subscription_id: sub_id,
+        },
+    );
+
+    let resp = serde_json::json!({ "alert_id": alert_id.to_string() });
+    Ok(CallToolResult::success(vec![Content::text(resp.to_string())]))
+}
+
+async fn handle_unregister_alert(
+    data: Value,
+    client: IrisClient,
+    alert_registry: AlertRegistry,
+) -> Result<CallToolResult, McpError> {
+    let alert_id_str = match data.get("alert_id").and_then(|v| v.as_str()) {
+        Some(s) => s.to_string(),
+        None => {
+            return Ok(CallToolResult::error(vec![Content::text(
+                "Missing required field: alert_id",
+            )]));
+        }
+    };
+
+    let alert_id: u64 = match alert_id_str.parse() {
+        Ok(id) => id,
+        Err(_) => {
+            return Ok(CallToolResult::error(vec![Content::text(format!(
+                "Invalid alert_id: '{alert_id_str}'"
+            ))]));
+        }
+    };
+
+    let registration = alert_registry.lock().await.remove(&alert_id);
+    match registration {
+        Some(reg) => {
+            let _ = client.unsubscribe(reg.subscription_id).await;
+            let resp = serde_json::json!({
+                "message": format!("Alert '{}' (id={}) unregistered", reg.alert_name, alert_id)
+            });
+            Ok(CallToolResult::success(vec![Content::text(resp.to_string())]))
+        }
+        None => Ok(CallToolResult::error(vec![Content::text(format!(
+            "No active alert with id={alert_id}"
+        ))])),
     }
 }
 

@@ -79,6 +79,14 @@ struct IrisClientInner {
     next_id: Arc<tokio::sync::Mutex<u32>>,
 }
 
+pub struct DispatchParams {
+    pub alert_id: u64,
+    pub alert_name: String,
+    pub delivery: crate::alerts::AlertDelivery,
+    pub alert_registry: crate::alerts::AlertRegistry,
+    pub http_client: reqwest::Client,
+}
+
 impl IrisClient {
     pub async fn connect(url: &str, api_key: &str, verbose: bool) -> Result<Self, IrisClientError> {
         let base_url = url
@@ -264,6 +272,38 @@ impl IrisClient {
         }
 
         Ok((id, rx))
+    }
+
+    /// Subscribes to a procedure and spawns a background task that dispatches
+    /// each incoming SSE event to the configured alert delivery target.
+    ///
+    /// The dispatch loop runs until the SSE stream ends or the alert is removed
+    /// from `alert_registry` (i.e. `unregister_alert` was called).
+    pub async fn subscribe_for_dispatch(
+        &self,
+        procedure: &str,
+        input: Value,
+        params: DispatchParams,
+    ) -> Result<u32, IrisClientError> {
+        let (sub_id, mut rx) = self.subscribe(procedure, input).await?;
+        let DispatchParams {
+            alert_id,
+            alert_name,
+            delivery,
+            alert_registry,
+            http_client,
+        } = params;
+
+        tokio::spawn(async move {
+            while let Some(event) = rx.recv().await {
+                if !alert_registry.lock().await.contains_key(&alert_id) {
+                    break;
+                }
+                let _ = crate::alerts::dispatch_event(&delivery, &alert_name, event, &http_client).await;
+            }
+        });
+
+        Ok(sub_id)
     }
 
     pub async fn unsubscribe(&self, id: u32) -> Result<(), IrisClientError> {

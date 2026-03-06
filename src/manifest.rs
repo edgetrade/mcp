@@ -9,14 +9,30 @@ pub struct McpManifest {
     pub skills: Vec<SkillDef>,
 }
 
+/// A namespace-level MCP tool. Each tool groups related procedures under a
+/// single `action` parameter. The `actions` array describes every available
+/// operation with its full input schema and routing information.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ToolDef {
     pub name: String,
     pub description: String,
     #[serde(rename = "inputSchema")]
     pub input_schema: Value,
+    /// Always "namespace" for tools emitted by this manifest.
+    pub kind: String,
+    pub actions: Vec<ActionDef>,
+}
+
+/// A single operation within a namespace tool.
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ActionDef {
+    pub name: String,
+    pub description: String,
+    #[serde(rename = "inputSchema")]
+    pub input_schema: Value,
+    /// Full tRPC procedure path, e.g. "market.searchTokens".
     pub procedure: String,
-    /// "query", "mutation", or "subscription"
+    /// "query", "mutation", or "subscription".
     pub kind: String,
 }
 

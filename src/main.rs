@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::RwLock;
 
+mod alerts;
 mod client;
 mod manifest;
 mod server;
@@ -11,7 +12,7 @@ mod subscriptions;
 mod urls;
 
 use manifest::McpManifest;
-use server::EdgeServer;
+use server::{EdgeServer, inject_local_agent_actions};
 use urls::{DOCS_BASE_URL, IRIS_API_URL};
 
 #[derive(Parser)]
@@ -236,7 +237,8 @@ async fn main() {
                         let new_hash = sha256(&body);
                         if new_hash != current_hash {
                             match serde_json::from_slice::<McpManifest>(&body) {
-                                Ok(new_manifest) => {
+                                Ok(mut new_manifest) => {
+                                    inject_local_agent_actions(&mut new_manifest);
                                     *manifest_ref.write().await = new_manifest;
                                     current_hash = new_hash;
                                     eprintln!("[edge] manifest reloaded");
