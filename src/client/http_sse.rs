@@ -229,6 +229,11 @@ impl IrisClient {
                         if tx.is_closed() {
                             break;
                         }
+                        // Also exit cleanly if unsubscribe() was called while the stream
+                        // was active — no point reconnecting a cancelled subscription.
+                        if !inner.subscriptions.lock().await.contains_key(&id) {
+                            break;
+                        }
                         // Server closed the stream (e.g. reboot/deploy). Reset state and
                         // reconnect after a brief pause.
                         if inner.verbose {
@@ -304,6 +309,26 @@ impl IrisClient {
         });
 
         Ok(sub_id)
+    }
+
+    pub async fn ping(&self) -> Result<(), IrisClientError> {
+        let url = format!("{}/ping", self.inner.base_url);
+        let response = self
+            .inner
+            .http
+            .get(&url)
+            .send()
+            .await
+            .map_err(|e| IrisClientError::Http(format!("Ping failed: {}", e)))?;
+
+        if response.status().is_success() {
+            Ok(())
+        } else {
+            Err(IrisClientError::Http(format!(
+                "Ping returned status: {}",
+                response.status()
+            )))
+        }
     }
 
     pub async fn unsubscribe(&self, id: u32) -> Result<(), IrisClientError> {

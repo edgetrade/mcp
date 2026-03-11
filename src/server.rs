@@ -380,13 +380,49 @@ pub(crate) fn inject_local_agent_actions(manifest: &mut McpManifest) {
     let Some(agent_tool) = manifest.tools.iter_mut().find(|t| t.name == "agent") else {
         return;
     };
-    if agent_tool
-        .actions
-        .iter()
-        .any(|a| a.name == "register_alert")
-    {
+    if agent_tool.actions.iter().any(|a| a.name == "ping") {
         return;
     }
+    agent_tool.actions.push(ActionDef {
+        name: "ping".to_string(),
+        description: "Check connectivity with a request-response ping. Returns pong on success.".to_string(),
+        input_schema: serde_json::json!({ "type": "object" }),
+        procedure: "agent.ping".to_string(),
+        kind: "local".to_string(),
+    });
+    agent_tool.actions.push(ActionDef {
+        name: "ping_subscription".to_string(),
+        description: "Subscribe to a periodic ping emitted every 5 seconds from the server. Use to verify subscription connectivity. Call with _action=subscribe to start, _action=poll to drain buffered pings, _action=stop to cancel.".to_string(),
+        input_schema: serde_json::json!({
+            "type": "object",
+            "properties": {
+                "_action": {
+                    "type": "string",
+                    "enum": ["subscribe", "poll", "stop"],
+                    "description": "subscribe (default): start subscription and return subscription_id; poll: drain buffered events; stop: cancel subscription"
+                },
+                "subscription_id": {
+                    "type": "integer",
+                    "description": "Required for poll and stop. Returned by subscribe."
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum events to return per poll (default 10)"
+                }
+            }
+        }),
+        procedure: "alerts.onPing".to_string(),
+        kind: "subscription".to_string(),
+    });
+    agent_tool.actions.push(ActionDef {
+        name: "list_alerts".to_string(),
+        description:
+            "List all currently active alert subscriptions with their IDs, event types, and delivery destinations."
+                .to_string(),
+        input_schema: serde_json::json!({ "type": "object" }),
+        procedure: "agent.list_alerts".to_string(),
+        kind: "local".to_string(),
+    });
     agent_tool.actions.push(ActionDef {
         name: "register_alert".to_string(),
         description: "Register an alert subscription. Read edge://alerts first to discover available alert types and their input schemas. Delivers events via webhook, Redis stream, or Telegram.".to_string(),
@@ -457,13 +493,24 @@ pub(crate) fn inject_local_agent_actions(manifest: &mut McpManifest) {
         .pointer_mut("/properties/action/enum")
         .and_then(|v| v.as_array_mut())
     {
-        for action in ["register_alert", "unregister_alert"] {
+        for action in [
+            "ping",
+            "ping_subscription",
+            "list_alerts",
+            "register_alert",
+            "unregister_alert",
+        ] {
             if !enum_arr.iter().any(|v| v.as_str() == Some(action)) {
                 enum_arr.push(serde_json::Value::String(action.to_string()));
             }
         }
     }
 
+    agent_tool
+        .description
+        .push_str("\n• ping: Check connectivity with a request-response ping. Returns pong on success.");
+    agent_tool.description.push_str("\n• ping_subscription: Subscribe to a periodic ping (every 5s) to verify subscription connectivity. Call with _action=subscribe, then _action=poll to receive events, _action=stop to cancel.");
+    agent_tool.description.push_str("\n• list_alerts: List all currently active alert subscriptions with their IDs, event types, and delivery destinations.");
     agent_tool.description.push_str("\n• register_alert: Register an alert subscription. Read edge://alerts for available alert types and edge://alert-delivery for exact delivery method schemas such as webhook, Redis stream, or Telegram.");
     agent_tool
         .description
@@ -527,6 +574,11 @@ async fn handle_local_action(
     http_client: reqwest::Client,
 ) -> Result<CallToolResult, McpError> {
     match action_name {
+        "ping" => match client.ping().await {
+            Ok(()) => Ok(CallToolResult::success(vec![Content::text(r#"{"message":"pong"}"#)])),
+            Err(e) => Ok(CallToolResult::error(vec![Content::text(e.to_string())])),
+        },
+        "list_alerts" => handle_list_alerts(alert_registry).await,
         "register_alert" => handle_register_alert(data, client, manifest, alert_registry, http_client).await,
         "unregister_alert" => handle_unregister_alert(data, client, alert_registry).await,
         _ => Ok(CallToolResult::error(vec![Content::text(format!(
@@ -614,16 +666,55 @@ async fn handle_register_alert(
         }
     };
 
+    eprintln!(
+        "[edge] ✓ alert '{}' (id={}) → {}",
+        alert_name,
+        alert_id,
+        delivery_summary(&delivery)
+    );
+
     alert_registry.lock().await.insert(
         alert_id,
         AlertRegistration {
             alert_name,
             subscription_id: sub_id,
+            delivery,
         },
     );
 
     let resp = serde_json::json!({ "alert_id": alert_id.to_string() });
     Ok(CallToolResult::success(vec![Content::text(resp.to_string())]))
+}
+
+async fn handle_list_alerts(alert_registry: AlertRegistry) -> Result<CallToolResult, McpError> {
+    let registry = alert_registry.lock().await;
+    let mut alerts: Vec<_> = registry
+        .iter()
+        .map(|(id, reg)| {
+            serde_json::json!({
+                "alert_id": id.to_string(),
+                "alert_name": reg.alert_name,
+                "destination": delivery_summary(&reg.delivery),
+            })
+        })
+        .collect();
+    alerts.sort_by_key(|a| {
+        a["alert_id"]
+            .as_str()
+            .unwrap_or("")
+            .parse::<u64>()
+            .unwrap_or(0)
+    });
+    let resp = serde_json::json!({ "alerts": alerts, "count": alerts.len() });
+    Ok(CallToolResult::success(vec![Content::text(resp.to_string())]))
+}
+
+fn delivery_summary(delivery: &crate::alerts::AlertDelivery) -> String {
+    match delivery {
+        crate::alerts::AlertDelivery::Webhook { url, .. } => format!("webhook: {}", url),
+        crate::alerts::AlertDelivery::Redis { channel, .. } => format!("redis: {}", channel),
+        crate::alerts::AlertDelivery::Telegram { .. } => "telegram".to_string(),
+    }
 }
 
 async fn handle_unregister_alert(

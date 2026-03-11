@@ -24,6 +24,7 @@ pub enum AlertDelivery {
 pub struct AlertRegistration {
     pub alert_name: String,
     pub subscription_id: u32,
+    pub delivery: AlertDelivery,
 }
 
 pub type AlertRegistry = Arc<Mutex<HashMap<u64, AlertRegistration>>>;
