@@ -5,7 +5,8 @@ use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::mpsc;
 
-use crate::urls::DOCS_BASE_URL;
+use crate::messages;
+use crate::utils::urls::DOCS_BASE_URL;
 
 #[derive(Error, Debug)]
 #[allow(dead_code)]
@@ -30,13 +31,16 @@ pub enum IrisClientError {
 
     #[error("Not implemented: {0}. See: {DOCS_BASE_URL}/tools/trade#execution")]
     NotImplemented(String),
+
+    #[error("Deserialization error: {0}")]
+    Deserialization(String),
 }
 
 impl IrisClientError {
     #[allow(dead_code)]
     pub fn docs_url(&self) -> String {
         match self {
-            Self::Http(_) | Self::Timeout | Self::InvalidResponse(_) | Self::Rpc(_) => {
+            Self::Http(_) | Self::Timeout | Self::InvalidResponse(_) | Self::Rpc(_) | Self::Deserialization(_) => {
                 format!("{}/errors", DOCS_BASE_URL)
             }
             Self::Connection(_) | Self::Auth(_) => format!("{}/authentication", DOCS_BASE_URL),
@@ -82,8 +86,8 @@ struct IrisClientInner {
 pub struct DispatchParams {
     pub alert_id: u64,
     pub alert_name: String,
-    pub delivery: crate::alerts::AlertDelivery,
-    pub alert_registry: crate::alerts::AlertRegistry,
+    pub delivery: crate::subscriptions::alerts::AlertDelivery,
+    pub alert_registry: crate::subscriptions::alerts::AlertRegistry,
     pub http_client: reqwest::Client,
 }
 
@@ -94,18 +98,13 @@ impl IrisClient {
             .replace("ws://", "http://");
 
         if verbose {
-            eprintln!("[edge] connecting to {}", base_url);
-            eprintln!(
-                "[edge] api key: {}...{}",
-                &api_key[..4.min(api_key.len())],
-                &api_key[api_key.len().saturating_sub(4)..]
-            );
+            messages::error::connection_failed_url_key(&base_url, api_key);
         }
 
         let http = reqwest::Client::new();
 
         if verbose {
-            eprintln!("[edge] connected");
+            messages::success::connection_succeeded();
         }
 
         Ok(Self {
@@ -120,15 +119,33 @@ impl IrisClient {
         })
     }
 
-    pub async fn query(&self, path: &str, input: Value) -> Result<Value, IrisClientError> {
-        self.call(path, input).await
+    pub async fn query<T: serde::de::DeserializeOwned>(&self, path: &str, input: Value) -> Result<T, IrisClientError> {
+        if self.inner.verbose {
+            messages::success::query_request(path, &input.to_string());
+        }
+        let result = self.call::<T>(path, input).await;
+        if self.inner.verbose {
+            messages::success::query_response(path);
+        }
+        result
     }
 
-    async fn call(&self, path: &str, input: Value) -> Result<Value, IrisClientError> {
+    pub async fn mutation<T: serde::de::DeserializeOwned>(
+        &self,
+        path: &str,
+        input: Value,
+    ) -> Result<T, IrisClientError> {
         if self.inner.verbose {
-            eprintln!("[edge] → {} (query/mutation): {}", path, input);
+            messages::success::mutation_request(path, &input.to_string());
         }
+        let result = self.call::<T>(path, input).await;
+        if self.inner.verbose {
+            messages::success::mutation_response(path);
+        }
+        result
+    }
 
+    async fn call<T: serde::de::DeserializeOwned>(&self, path: &str, input: Value) -> Result<T, IrisClientError> {
         let url = format!("{}/v1/call", self.inner.base_url);
         let request_body = ApiCallRequest {
             path: path.to_string(),
@@ -171,7 +188,7 @@ impl IrisClient {
             };
 
             if self.inner.verbose {
-                eprintln!("[edge] ✗ {} (query/mutation): {}", path, err);
+                messages::error::query_error(path, &err.to_string());
             }
 
             return Err(err);
@@ -181,11 +198,10 @@ impl IrisClient {
             .data
             .ok_or_else(|| IrisClientError::InvalidResponse("Missing data in response".to_string()))?;
 
-        if self.inner.verbose {
-            eprintln!("[edge] ← {} (query/mutation): {}", path, data);
-        }
+        let deserialized = serde_json::from_value::<T>(data)
+            .map_err(|e| IrisClientError::Deserialization(format!("Failed to deserialize response: {}", e)))?;
 
-        Ok(data)
+        Ok(deserialized)
     }
 
     pub async fn subscribe(
@@ -199,7 +215,7 @@ impl IrisClient {
         drop(next_id);
 
         if self.inner.verbose {
-            eprintln!("[edge] → subscribe {} (id={}): {}", path, id, input);
+            messages::success::subscribe_request(path, id, &input.to_string());
         }
 
         let (tx, rx) = mpsc::unbounded_channel();
@@ -237,7 +253,7 @@ impl IrisClient {
                         // Server closed the stream (e.g. reboot/deploy). Reset state and
                         // reconnect after a brief pause.
                         if inner.verbose {
-                            eprintln!("[edge] ↻ {} (id={}) stream ended — reconnecting", path_owned, id);
+                            messages::success::subscribe_reconnect(&path_owned, id);
                         }
                         error_deadline = None;
                         backoff = std::time::Duration::from_secs(1);
@@ -245,21 +261,18 @@ impl IrisClient {
                     }
                     Err(IrisClientError::Auth(e)) => {
                         // Auth errors are permanent — no point retrying.
-                        eprintln!("[edge] ✗ {} (id={}) auth error, stopping: {}", path_owned, id, e);
+                        messages::error::auth_error(&path_owned, &id.to_string(), &e.to_string());
                         break;
                     }
                     Err(e) => {
                         if inner.verbose {
-                            eprintln!("[edge] ✗ {} (id={}) error: {}", path_owned, id, e);
+                            messages::error::subscription_error(&path_owned, &id.to_string(), &e.to_string());
                         }
                         // Start the 5-minute clock on the first error.
                         let deadline = error_deadline
                             .get_or_insert_with(|| tokio::time::Instant::now() + std::time::Duration::from_secs(300));
                         if tokio::time::Instant::now() >= *deadline {
-                            eprintln!(
-                                "[edge] ✗ {} (id={}) could not reconnect within 5 minutes — giving up",
-                                path_owned, id
-                            );
+                            messages::error::reconnect_failed(&path_owned, &id.to_string());
                             break;
                         }
                         tokio::time::sleep(backoff).await;
@@ -273,7 +286,7 @@ impl IrisClient {
         });
 
         if self.inner.verbose {
-            eprintln!("[edge] ← subscribe {} (id={}) registered", path, id);
+            messages::success::subscribe_registered(path, id);
         }
 
         Ok((id, rx))
@@ -304,7 +317,7 @@ impl IrisClient {
                 if !alert_registry.lock().await.contains_key(&alert_id) {
                     break;
                 }
-                let _ = crate::alerts::dispatch_event(&delivery, &alert_name, event, &http_client).await;
+                let _ = crate::subscriptions::alerts::dispatch_event(&delivery, &alert_name, event, &http_client).await;
             }
         });
 
@@ -333,7 +346,7 @@ impl IrisClient {
 
     pub async fn unsubscribe(&self, id: u32) -> Result<(), IrisClientError> {
         if self.inner.verbose {
-            eprintln!("[edge] → subscription.stop (id={})", id);
+            messages::success::subscription_stop(id);
         }
 
         self.inner.subscriptions.lock().await.remove(&id);
@@ -392,7 +405,7 @@ impl IrisClientInner {
                                 return Ok(());
                             }
                         } else if self.verbose {
-                            eprintln!("[edge] Failed to parse SSE event data: {}", data_str);
+                            messages::error::sse_parse_error(data_str);
                         }
                     }
                 } else if line.starts_with("event: error") {
@@ -407,4 +420,8 @@ impl IrisClientInner {
 
         Ok(())
     }
+}
+
+pub async fn new_client(url: String, api_key: String, verbose: bool) -> Result<IrisClient, IrisClientError> {
+    IrisClient::connect(&url, &api_key, verbose).await
 }

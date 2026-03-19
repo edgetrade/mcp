@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct McpManifest {
     pub tools: Vec<ToolDef>,
     pub resources: Vec<ResourceDef>,
@@ -12,7 +12,7 @@ pub struct McpManifest {
 /// A namespace-level MCP tool. Each tool groups related procedures under a
 /// single `action` parameter. The `actions` array describes every available
 /// operation with its full input schema and routing information.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ToolDef {
     pub name: String,
     pub description: String,
@@ -24,7 +24,7 @@ pub struct ToolDef {
 }
 
 /// A single operation within a namespace tool.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ActionDef {
     pub name: String,
     pub description: String,
@@ -36,7 +36,7 @@ pub struct ActionDef {
     pub kind: String,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ResourceDef {
     pub uri: String,
     pub name: String,
@@ -46,7 +46,7 @@ pub struct ResourceDef {
     pub content: Value,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PromptDef {
     pub name: String,
     pub description: String,
@@ -54,14 +54,14 @@ pub struct PromptDef {
     pub messages: Vec<Value>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PromptArgument {
     pub name: String,
     pub description: String,
     pub required: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SkillDef {
     pub name: String,
     pub description: String,

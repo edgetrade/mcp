@@ -110,6 +110,47 @@ Add to your `config.json`:
 }
 ```
 
+## Key Management
+
+The `edge` CLI automatically detects if your OS keyring is available and uses it by default. If unavailable, it falls back to file-based storage.
+
+```bash
+# Create key (auto-detects keyring or file storage)
+edge key create
+
+# Verify key exists
+edge key unlock
+
+# Remove key
+edge key lock
+
+# Generate new key
+edge key update
+```
+
+### Override Config Location
+
+```bash
+# Use custom config file
+edge --config /path/to/config.toml key create
+
+# Or via environment variable
+export EDGE_CONFIG=/path/to/config.toml
+edge key create
+```
+
+### Force Storage Mode
+
+Edit `~/.config/edge/config.toml`:
+
+```toml
+[session]
+use_keyring = true   # Force OS keyring
+# use_keyring = false  # Force file storage
+```
+
+Remove the line to re-trigger auto-detection.
+
 ## First Tool Call
 
 Test the installation:
