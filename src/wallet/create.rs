@@ -7,11 +7,13 @@ use ed25519_dalek::{SigningKey as SolanaSigningKey, VerifyingKey as SolanaVerify
 use k256::ecdsa::{SigningKey as EvmSigningKey, VerifyingKey as EvmVerifyingKey};
 use sha3::{Digest as Sha3Digest, Keccak256};
 
-use tyche_enclave::{envelopes::transport::TransportKeyReceiver, types::chain_type::ChainType};
+use tyche_enclave::{
+    envelopes::storage::StorageEnvelope, envelopes::storage::WalletKey, shared::attestation::TransportKeyReceiver,
+    types::chain_type::ChainType,
+};
 
 use crate::client::IrisClient;
 use crate::session::crypto::UsersEncryptionKeys;
-use crate::session::crypto::seal_for_storage;
 use crate::wallet::api::upsert_encrypted_wallet;
 
 use super::types::{Wallet, WalletError, WalletResult};
@@ -60,7 +62,9 @@ fn create_evm_wallet(user_key: &UsersEncryptionKeys, name: String) -> WalletResu
     let hash = Keccak256::digest(&public_key_bytes[1..]);
     let address = format!("0x{}", hex::encode(&hash[hash.len() - 20..]));
 
-    let encrypted_private_key = seal_for_storage(signing_key.to_bytes().to_vec(), user_key)?;
+    let encrypted_private_key = WalletKey::new(ChainType::EVM, address.clone(), signing_key.to_bytes().to_vec())
+        .seal(&user_key.storage)
+        .map_err(|e| WalletError::StorageFailed(e.to_string()))?;
 
     Ok(Wallet {
         chain: ChainType::EVM,
@@ -79,7 +83,9 @@ fn create_svm_wallet(user_key: &UsersEncryptionKeys, name: String) -> WalletResu
     let address = bs58::encode(verifying_key.as_bytes()).into_string();
 
     // Encrypt private key (32-byte seed)
-    let encrypted_private_key = seal_for_storage(signing_key.to_bytes().to_vec(), user_key)?;
+    let encrypted_private_key = WalletKey::new(ChainType::SVM, address.clone(), signing_key.to_bytes().to_vec())
+        .seal(&user_key.storage)
+        .map_err(|e| WalletError::StorageFailed(e.to_string()))?;
 
     Ok(Wallet {
         chain: ChainType::SVM,

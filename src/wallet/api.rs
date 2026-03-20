@@ -3,16 +3,11 @@ use base64::engine::general_purpose::STANDARD;
 use serde_json::json;
 
 use crate::{
-    client::IrisClient,
-    config::Config,
-    session::crypto::{UsersEncryptionKeys, seal_for_transport},
-    wallet::types::GetTransportKeyResponse,
+    client::IrisClient, config::Config, session::crypto::UsersEncryptionKeys, wallet::types::GetTransportKeyResponse,
 };
 use tyche_enclave::{
-    envelopes::{
-        rotate_user_key::RotateUserKeyPayload,
-        transport::{KeyToUse, TransportKeyReceiver},
-    },
+    envelopes::transport::{RawTransportEnvelope, RotateUserKeyPayload, TransportEnvelope, TransportEnvelopeKey},
+    shared::attestation::TransportKeyReceiver,
     types::chain_type::ChainType,
 };
 
@@ -216,21 +211,17 @@ pub async fn upsert_encrypted_wallet(
         Some(ek) => ek,
         None => &get_transport_key(client).await?,
     };
+    let key = TransportEnvelopeKey::Unsealing(enclave_keys.deterministic);
 
     // First we get the encrypted_wallet_material sorted. This is saved in the db after being dual encrypted.
-    let encrypted_wallet_blob = seal_for_transport(
-        wallet.encrypted_private_key.clone(),
-        enclave_keys,
-        KeyToUse::Deterministic,
-    )
-    .map_err(|e| WalletError::StorageFailed(e.to_string()))?;
+    let encrypted_wallet_blob = RawTransportEnvelope(wallet.encrypted_private_key.clone())
+        .seal(&key)
+        .map_err(|e| WalletError::StorageFailed(e.to_string()))?;
 
     // Second we get the envelope for the users keys sorted.
-    let wrapped = RotateUserKeyPayload::new(user_key.storage, None)
-        .to_bytes()
-        .map_err(WalletError::InvalidPrivateKey)?;
-    let envelope = seal_for_transport(wrapped, enclave_keys, KeyToUse::Deterministic)
-        .map_err(|e| WalletError::StorageFailed(e.to_string()))?;
+    let envelope = RotateUserKeyPayload::new(user_key.storage, None)
+        .seal(&key)
+        .map_err(|e| WalletError::InvalidPrivateKey(e.to_string()))?;
 
     let _response: CreateEncryptedWalletResponse = client
         .mutation(
@@ -283,11 +274,9 @@ pub async fn rotate_user_encryption_key(
         None => &get_transport_key(client).await?,
     };
 
-    let wrapped = RotateUserKeyPayload::new(new_user_encryption_key.storage, Some(old_user_encryption_key.storage))
-        .to_bytes()
-        .map_err(WalletError::InvalidPrivateKey)?;
-    let envelope = seal_for_transport(wrapped, enclave_keys, KeyToUse::Deterministic)
-        .map_err(|e| WalletError::StorageFailed(e.to_string()))?;
+    let envelope = RotateUserKeyPayload::new(new_user_encryption_key.storage, Some(old_user_encryption_key.storage))
+        .seal(&TransportEnvelopeKey::Unsealing(enclave_keys.deterministic))
+        .map_err(|e| WalletError::InvalidPrivateKey(e.to_string()))?;
 
     let _response: CreateEncryptedWalletResponse = client
         .mutation(
