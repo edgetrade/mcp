@@ -162,9 +162,9 @@ pub type WalletResult<T> = Result<T, WalletError>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetTransportKeyResponse {
-    pub ephemeral: String,            // base64 encoded
-    pub deterministic: String,        // base64 encoded
-    pub attestation_document: String, // base64 encoded
+    pub ephemeral: String,     // base64 encoded
+    pub deterministic: String, // base64 encoded
+    pub attestation: String,   // base64 encoded
 }
 
 /// Response from creating or updating an encrypted wallet.

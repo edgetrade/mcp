@@ -57,6 +57,8 @@ pub async fn get_transport_key(client: &IrisClient) -> WalletResult<TransportKey
         && let Some(timestamp) = cached.timestamp()
         && is_cache_fresh(timestamp, ttl_minutes)
     {
+        println!("Cache is fresh, decoding and returning");
+
         // Cache is fresh, decode and return
         let ephemeral = STANDARD
             .decode(&cached.ephemeral)
@@ -65,7 +67,7 @@ pub async fn get_transport_key(client: &IrisClient) -> WalletResult<TransportKey
             .decode(&cached.deterministic)
             .map_err(|_| WalletError::Crypto("Invalid cached deterministic key".to_string()))?;
         let attestation = STANDARD
-            .decode(&cached.attestation_document)
+            .decode(&cached.attestation)
             .map_err(|_| WalletError::Crypto("Invalid cached attestation".to_string()))?;
 
         // Decode base64 to raw bytes and convert to fixed-size arrays
@@ -100,7 +102,7 @@ pub async fn get_transport_key(client: &IrisClient) -> WalletResult<TransportKey
         .map_err(|e| WalletError::StorageFailed(e.to_string()))?;
 
     let attestation = STANDARD
-        .decode(&response.attestation_document)
+        .decode(&response.attestation)
         .map_err(|e| WalletError::StorageFailed(e.to_string()))?;
 
     // Verify attestation if configured
@@ -121,11 +123,7 @@ pub async fn get_transport_key(client: &IrisClient) -> WalletResult<TransportKey
     let transport_key = TransportKeyReceiver::from_message(&ephemeral_bytes, &deterministic_bytes, attestation.clone());
 
     // Save to cache
-    let cached_keys = CachedTransportKeys::new(
-        response.ephemeral,
-        response.deterministic,
-        response.attestation_document,
-    );
+    let cached_keys = CachedTransportKeys::new(response.ephemeral, response.deterministic, response.attestation);
 
     if let Err(e) = save_transport_keys(&config_dir, &cached_keys) {
         // Log cache save failure but don't fail the operation

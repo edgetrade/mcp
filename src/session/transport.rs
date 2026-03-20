@@ -37,18 +37,18 @@ pub struct CachedTransportKeys {
     /// Deterministic public key (base64 encoded)
     pub deterministic: String,
     /// Attestation document (base64 encoded)
-    pub attestation_document: String,
+    pub attestation: String,
     /// ISO 8601 timestamp of when keys were cached
     pub cached_at: String,
 }
 
 impl CachedTransportKeys {
     /// Create new cached transport keys with current timestamp.
-    pub fn new(ephemeral: String, deterministic: String, attestation_document: String) -> Self {
+    pub fn new(ephemeral: String, deterministic: String, attestation: String) -> Self {
         Self {
             ephemeral,
             deterministic,
-            attestation_document,
+            attestation,
             cached_at: Utc::now().to_rfc3339(),
         }
     }
@@ -178,7 +178,7 @@ mod tests {
 
         assert_eq!(keys.ephemeral, "ephemeral123");
         assert_eq!(keys.deterministic, "deterministic456");
-        assert_eq!(keys.attestation_document, "attestation789");
+        assert_eq!(keys.attestation, "attestation789");
         assert!(!keys.cached_at.is_empty());
     }
 
@@ -221,7 +221,7 @@ mod tests {
         let loaded_keys = loaded.unwrap();
         assert_eq!(loaded_keys.ephemeral, "base64ephemeral");
         assert_eq!(loaded_keys.deterministic, "base64deterministic");
-        assert_eq!(loaded_keys.attestation_document, "base64attestation");
+        assert_eq!(loaded_keys.attestation, "base64attestation");
     }
 
     #[test]
@@ -255,7 +255,7 @@ mod tests {
 
         assert_eq!(deserialized.ephemeral, keys.ephemeral);
         assert_eq!(deserialized.deterministic, keys.deterministic);
-        assert_eq!(deserialized.attestation_document, keys.attestation_document);
+        assert_eq!(deserialized.attestation, keys.attestation);
         assert_eq!(deserialized.cached_at, keys.cached_at);
     }
 }
