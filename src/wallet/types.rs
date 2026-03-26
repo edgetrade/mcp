@@ -145,7 +145,7 @@ pub enum WalletError {
     WalletNotFound(String),
 
     /// Storage failed.
-    #[error("Storage failed: {0}")]
+    #[error("Storage error: {0}")]
     StorageFailed(String),
 
     /// Could not parse the wallet list.
@@ -159,31 +159,6 @@ pub enum WalletError {
 
 /// Result type for wallet operations.
 pub type WalletResult<T> = Result<T, WalletError>;
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GetTransportKeyResponse {
-    pub ephemeral: String,     // base64 encoded
-    pub deterministic: String, // base64 encoded
-    pub attestation: String,   // base64 encoded
-}
-
-/// Response from creating or updating an encrypted wallet.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CreateEncryptedWalletResponse {
-    /// Whether the operation succeeded.
-    pub success: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WalletEntry {
-    pub name: String,
-    pub address: String,
-}
-
-/// Response from listing encrypted wallets.
-/// The server returns a map of chain type to address.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ListEncryptedWalletsResponse(pub std::collections::HashMap<String, WalletEntry>);
 
 impl From<crate::session::crypto::CryptoError> for WalletError {
     fn from(e: crate::session::crypto::CryptoError) -> Self {

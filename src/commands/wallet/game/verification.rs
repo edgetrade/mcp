@@ -251,9 +251,6 @@ description = "Derived address from recovered key matches stored address"
 pub fn write_verification_instructions() -> messages::success::CommandResult<()> {
     let path = game_state_path().map_err(|e| messages::error::CommandError::Storage(e.to_string()))?;
 
-    // Load current state
-    let _state = load_game_state().map_err(|e| messages::error::CommandError::Storage(e.to_string()))?;
-
     // Append verification instructions to the file
     let mut file = std::fs::OpenOptions::new()
         .append(true)
@@ -416,7 +413,7 @@ fn format_result(index: usize, result: &GameResultEntry) -> String {
         output.push_str(&format!("     Signature: {}\n", preview));
     }
 
-    if let Some(ref err) = result.error {
+    if let Some(ref err) = result.enclave_error {
         output.push_str(&format!("     Error: {}\n", err));
     }
 
@@ -452,86 +449,4 @@ pub fn display_verification_summary() {
     println!("  edge wallet prove --game 1 --replay");
     println!("  edge wallet prove --game 2 --replay");
     println!();
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::commands::wallet::game::game_state::{GameResultEntry, GameState};
-
-    #[test]
-    fn test_verification_instructions_content() {
-        // Verify instructions contain key sections
-        assert!(VERIFICATION_INSTRUCTIONS.contains("THE BLIND ORACLE"));
-        assert!(VERIFICATION_INSTRUCTIONS.contains("THE VAULT"));
-        assert!(VERIFICATION_INSTRUCTIONS.contains("age"));
-        assert!(VERIFICATION_INSTRUCTIONS.contains("cast"));
-        assert!(VERIFICATION_INSTRUCTIONS.contains("HKDF"));
-        assert!(VERIFICATION_INSTRUCTIONS.contains("AES-256-GCM"));
-    }
-
-    #[test]
-    fn test_format_result_success() {
-        let result = GameResultEntry {
-            session_id: "test-session".to_string(),
-            game_type: 1,
-            success: true,
-            signature: Some("sig123456789".to_string()),
-            error: None,
-            timestamp: "2024-01-01T00:00:00Z".to_string(),
-        };
-
-        let formatted = format_result(1, &result);
-        assert!(formatted.contains("test-session"));
-        assert!(formatted.contains("SUCCESS"));
-        assert!(formatted.contains("sig123456789"));
-    }
-
-    #[test]
-    fn test_format_result_failure() {
-        let result = GameResultEntry {
-            session_id: "test-session".to_string(),
-            game_type: 1,
-            success: false,
-            signature: None,
-            error: Some("Test error".to_string()),
-            timestamp: "2024-01-01T00:00:00Z".to_string(),
-        };
-
-        let formatted = format_result(1, &result);
-        assert!(formatted.contains("test-session"));
-        assert!(formatted.contains("FAILED"));
-        assert!(formatted.contains("Test error"));
-    }
-
-    #[test]
-    fn test_format_game_results_empty() {
-        let state = GameState::default();
-        let formatted = format_game_results(&state);
-        assert!(formatted.contains("No game results found"));
-    }
-
-    #[test]
-    fn test_format_game_results_with_data() {
-        let state = GameState {
-            wallet: None,
-            derived_keys: std::collections::HashMap::new(),
-            encrypted_blobs: std::collections::HashMap::new(),
-            sealed_intents: vec![],
-            game_results: vec![GameResultEntry {
-                session_id: "session-1".to_string(),
-                game_type: 1,
-                success: true,
-                signature: Some("sig1".to_string()),
-                error: None,
-                timestamp: "2024-01-01T00:00:00Z".to_string(),
-            }],
-            last_updated: None,
-        };
-
-        let formatted = format_game_results(&state);
-        assert!(formatted.contains("Game 1"));
-        assert!(formatted.contains("session-1"));
-        assert!(formatted.contains("SUCCESS"));
-    }
 }

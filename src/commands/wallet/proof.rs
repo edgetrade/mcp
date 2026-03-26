@@ -1,4 +1,4 @@
-//! Prove game command for Edge CLI.
+//! Proof game command for Edge CLI.
 //!
 //! The prove game is an interactive demonstration of Edge's security model.
 //! It allows users to create sealed intents and test wallet access constraints
@@ -10,7 +10,7 @@
 
 use crate::client::IrisClient;
 use crate::commands::wallet::game::game_state::load_game_state;
-use crate::commands::wallet::verification::{
+use crate::commands::wallet::game::verification::{
     display_verification_summary, format_game_results, maybe_write_verification_instructions, prompt_replay,
 };
 use crate::messages;
@@ -32,7 +32,7 @@ use super::game;
 pub async fn wallet_prove(game: Option<u8>, replay: bool, client: &IrisClient) -> messages::success::CommandResult<()> {
     // Show welcome message
     println!("\n========================================");
-    println!("         Welcome to the Prove Game     ");
+    println!("         Welcome to the Proof Game     ");
     println!("========================================\n");
     println!("The prove game demonstrates Edge's security model.");
     println!("You'll create sealed intents and test wallet access constraints.\n");
@@ -116,7 +116,7 @@ pub async fn wallet_prove(game: Option<u8>, replay: bool, client: &IrisClient) -
     display_verification_summary();
 
     println!("\n========================================");
-    println!("         Prove Game Complete!          ");
+    println!("         Proof Game Complete!          ");
     println!("========================================\n");
 
     Ok(())

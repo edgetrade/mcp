@@ -12,7 +12,7 @@ use colored_json::to_colored_json_auto;
 use tokio::sync::RwLock;
 
 use crate::app::client::parse_api_credentials;
-use crate::app::handler::{handle_key, handle_ping, handle_server, handle_skill, handle_version, handle_wallet};
+use crate::app::handler::{handle_key, handle_ping, handle_skill, handle_version, handle_wallet, serve};
 use crate::app::{KeyCreateFn, KeyDeleteFn, KeyLockFn, KeyUnlockFn, KeyUpdateFn};
 use crate::client::new_client;
 use crate::commands::serve::mcp::EdgeServer;
@@ -235,14 +235,16 @@ pub async fn run(
     // Commands that require the Server
     //
     // ------------------------------------------------------------------------
-    let server = EdgeServer::new(api_client, shared_manifest.clone())
-        .await
-        .map_err(|e| {
-            messages::error::iris_connection_failed(&e.to_string());
-            1
-        });
+    if let Some(Commands::Serve { command: _, args }) = &cli.command {
+        let server = EdgeServer::new(api_client, shared_manifest.clone())
+            .await
+            .map_err(|e| {
+                messages::error::iris_connection_failed(&e.to_string());
+                1
+            });
 
-    if let Err(code) = handle_server(&cli, server.unwrap()).await {
-        process::exit(code);
+        if let Err(code) = serve(args, server.unwrap()).await {
+            process::exit(code);
+        }
     }
 }

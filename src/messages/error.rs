@@ -94,6 +94,59 @@ impl std::fmt::Display for ErrorCode {
     }
 }
 
+#[derive(Error, Debug)]
+#[allow(dead_code)]
+pub enum IrisClientError {
+    #[error("HTTP error: {0}")]
+    Http(String),
+
+    #[error("Connection error: {0}. See: {DOCS_BASE_URL}/authentication")]
+    Connection(String),
+
+    #[error("Authentication failed: {0}. See: {DOCS_BASE_URL}/authentication")]
+    Auth(String),
+
+    #[error("Request timeout. See: {DOCS_BASE_URL}/errors")]
+    Timeout,
+
+    #[error("Invalid response: {0}. See: {DOCS_BASE_URL}/errors")]
+    InvalidResponse(String),
+
+    #[error("RPC error: {0}. See: {DOCS_BASE_URL}/errors")]
+    Rpc(String),
+
+    #[error("Not implemented: {0}. See: {DOCS_BASE_URL}/tools/trade#execution")]
+    NotImplemented(String),
+
+    #[error("Deserialization error: {0}")]
+    Deserialization(String),
+
+    #[error("Serialization error: {0}")]
+    Serialization(String),
+
+    #[error("Missing data in response")]
+    MissingData,
+}
+
+impl IrisClientError {
+    #[allow(dead_code)]
+    pub fn docs_url(&self) -> String {
+        match self {
+            Self::Http(_)
+            | Self::Timeout
+            | Self::InvalidResponse(_)
+            | Self::Rpc(_)
+            | Self::Deserialization(_)
+            | Self::Serialization(_) => {
+                format!("{}/errors", DOCS_BASE_URL)
+            }
+            Self::Connection(_) | Self::Auth(_) => format!("{}/authentication", DOCS_BASE_URL),
+            Self::NotImplemented(_) => format!("{}/tools/trade#execution", DOCS_BASE_URL),
+            Self::MissingData => format!("{}/errors", DOCS_BASE_URL),
+        }
+    }
+}
+
 // Only implement From for types that are common to both features.
 // Feature-specific types should use .map_err() at the boundary.
 

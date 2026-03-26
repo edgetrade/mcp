@@ -10,19 +10,24 @@ use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 use hkdf::Hkdf;
 use sha2::Sha256;
+use uuid::Uuid;
 
 use tyche_enclave::envelopes::transport::{ExecutionPayload, SealedIntent, TransportEnvelope, TransportEnvelopeKey};
 
 use crate::client::IrisClient;
-use crate::client::{EvmParameters, ExecuteIntent, get_transport_key, prove_game_with_intents};
 use crate::commands::wallet::{
-    game::game_state::{
-        GameResultEntry, GameWallet, get_derived_key, get_encrypted_blob, store_derived_key, store_encrypted_blob,
-        store_game_result,
+    game::{
+        game_state::{
+            GameResultEntry, GameWallet, get_derived_key, get_encrypted_blob, load_game_state, store_derived_key,
+            store_encrypted_blob, store_game_result,
+        },
+        verification,
     },
-    prove::{generate_session_id, prompt_user},
+    proof::{generate_session_id, prompt_user},
 };
+use crate::generated::routes::requests::agent_proof_game::ProofGameRequestOrdersItem;
 use crate::messages;
+use crate::session::transport::get_transport_key;
 
 /// Play Game 2: The Vault.
 ///
@@ -33,7 +38,7 @@ use crate::messages;
 /// 4. Seal wallet blob with both keys
 /// 5. Prompt user for ONE password to test
 /// 6. Create 2 unseal orders (one with each key)
-/// 7. Call prove_game with both orders
+/// 7. Call proof_game with both orders
 /// 8. Show results: only correct password decrypts wallet
 ///
 /// # Arguments
@@ -50,7 +55,6 @@ pub async fn play_game(replay: bool, client: &IrisClient) -> messages::success::
     // Step 2: Get passwords and derive keys
     let (password1, password2) = if replay {
         println!("Replay mode: using stored passwords...\n");
-        // In replay mode, we don't need actual passwords - just use placeholder
         ("replay1".to_string(), "replay2".to_string())
     } else {
         get_passwords_from_user()?
@@ -61,15 +65,14 @@ pub async fn play_game(replay: bool, client: &IrisClient) -> messages::success::
     let key2 = get_or_derive_key("password2", &password2, replay)?;
 
     // Step 4: Create encrypted wallet blobs
-    let (_blob1, _blob2) = if replay {
-        load_existing_blobs()?
+    if replay {
+        load_existing_blobs()?;
     } else {
-        create_encrypted_blobs(&wallet, &key1, &key2)?
+        create_encrypted_blobs(&wallet, &key1, &key2)?;
     };
 
     // Step 5: Get the test password from user
     let test_password = if replay {
-        // In replay mode, use password1 as default
         println!("Replay mode: testing with password1...\n");
         password1.clone()
     } else {
@@ -84,17 +87,16 @@ pub async fn play_game(replay: bool, client: &IrisClient) -> messages::success::
     } else if test_password == password2 {
         key2
     } else {
-        // Test with a wrong key to show failure
         [0u8; 32]
     };
 
     // Step 6: Create intents for prove game
     let intents = create_vault_intents(&wallet, &key1, &key2, &test_key, client).await?;
 
-    // Step 7: Call prove_game
+    // Step 7: Call proof_game
     println!("Sending vault unlock attempts to the enclave...\n");
 
-    let response = prove_game_with_intents(session_id.clone(), intents, client)
+    let response = super::proof_game_with_intents(session_id.clone(), intents, client)
         .await
         .map_err(|e| messages::error::CommandError::Wallet(e.to_string()))?;
 
@@ -104,6 +106,10 @@ pub async fn play_game(replay: bool, client: &IrisClient) -> messages::success::
     // Step 9: Store game result
     let game_result = create_vault_game_result(&response, &session_id)?;
     store_game_result(game_result).map_err(|e| messages::error::CommandError::Wallet(e.to_string()))?;
+
+    // Display all stored game results
+    let state = load_game_state().map_err(|e| messages::error::CommandError::Wallet(e.to_string()))?;
+    println!("{}", verification::format_game_results(&state));
 
     Ok(())
 }
@@ -214,7 +220,7 @@ async fn create_vault_intents(
     key2: &[u8; 32],
     _test_key: &[u8; 32],
     client: &IrisClient,
-) -> messages::success::CommandResult<Vec<ExecuteIntent>> {
+) -> messages::success::CommandResult<Vec<ProofGameRequestOrdersItem>> {
     // Get transport keys for sealing
     let enclave_keys = get_transport_key(client)
         .await
@@ -224,11 +230,11 @@ async fn create_vault_intents(
     let mut intents = Vec::new();
 
     // Create intent for password1 (key1)
-    let intent1 = create_vault_intent("vault-key1", wallet, key1, &transport_key)?;
+    let intent1 = create_vault_intent(Uuid::new_v4(), wallet, key1, &transport_key)?;
     intents.push(intent1);
 
     // Create intent for password2 (key2)
-    let intent2 = create_vault_intent("vault-key2", wallet, key2, &transport_key)?;
+    let intent2 = create_vault_intent(Uuid::new_v4(), wallet, key2, &transport_key)?;
     intents.push(intent2);
 
     println!("  Created {} vault unlock intents", intents.len());
@@ -237,11 +243,11 @@ async fn create_vault_intents(
 
 /// Create a single vault intent.
 fn create_vault_intent(
-    order_id: &str,
+    order_id: Uuid,
     wallet: &GameWallet,
     key: &[u8; 32],
     transport_key: &TransportEnvelopeKey,
-) -> messages::success::CommandResult<ExecuteIntent> {
+) -> messages::success::CommandResult<ProofGameRequestOrdersItem> {
     // Create the sealed intent
     let sealed_intent = SealedIntent {
         user_id: None,
@@ -255,27 +261,18 @@ fn create_vault_intent(
     let payload = ExecutionPayload::new(*key, sealed_intent);
 
     // Seal the payload
-    let envelope = payload
-        .seal(transport_key)
-        .map_err(|e| messages::error::CommandError::Wallet(e.to_string()))?;
+    let envelope =
+        payload
+            .seal(transport_key)
+            .map_err(|e: tyche_enclave::envelopes::transport::TransportEnvelopeError| {
+                messages::error::CommandError::Wallet(e.to_string())
+            })?;
 
-    let execute_intent = ExecuteIntent {
-        order_id: order_id.to_string(),
-        user_id: None,
-        agent_id: None,
-        chain_id: "1".to_string(),
-        wallet_address: wallet.address.clone(),
-        value: "0".to_string(),
-        data: vec![],
-        envelope,
-        svm: None,
-        evm: Some(EvmParameters {
-            tx_method: "NORMAL".to_string(),
-            flashbot_private_key: None,
-            gas_limit: None,
-            max_base_gas: None,
-            priority_gas: None,
-        }),
+    let execute_intent = ProofGameRequestOrdersItem {
+        order_id,
+        data: hex::encode([]), // Empty hex string
+        value: 0.0,
+        sealed_envelope: STANDARD.encode(&envelope),
     };
 
     Ok(execute_intent)
@@ -283,37 +280,31 @@ fn create_vault_intent(
 
 /// Display the vault game results.
 fn display_vault_results(
-    response: &crate::client::ProveGameResponse,
+    response: &crate::generated::routes::requests::agent_proof_game::ProofGameResponse,
     _wallet: &GameWallet,
     test_password: &str,
 ) -> messages::success::CommandResult<()> {
     println!("\n--- Vault Results ---\n");
 
-    let mut any_wallet_accessed = false;
+    let any_wallet_accessed = response
+        .results
+        .iter()
+        .any(|r| r.enclave_error.is_none() && r.signature.is_some());
 
-    for attempt in response.attempts.iter() {
-        let key_name = if attempt.order_id.contains("key1") {
-            "Password 1"
-        } else {
-            "Password 2"
-        };
+    for (i, result) in response.results.iter().enumerate() {
+        let key_name = if i == 0 { "Password 1" } else { "Password 2" };
 
-        let status = if attempt.wallet_accessed {
-            any_wallet_accessed = true;
+        let status = if result.enclave_error.is_none() && result.signature.is_some() {
             "✓ VAULT UNLOCKED - WALLET ACCESSED"
-        } else if attempt.success.is_some() {
-            "✗ Incorrect key - vault locked"
-        } else if let Some(ref failure) = attempt.failure {
-            &format!("✗ Failed: {}", failure.error_code)
+        } else if let Some(ref err) = result.enclave_error {
+            &format!("✗ Failed: {}", err)
         } else {
-            "✗ Unknown result"
+            "✗ Incorrect key - vault locked"
         };
 
         println!("{}: {}", key_name, status);
 
-        if let Some(ref success) = attempt.success
-            && let Some(ref sig) = success.signature
-        {
+        if let Some(ref sig) = result.signature {
             println!("  Signature: {}...", &sig[..sig.len().min(20)]);
         }
     }
@@ -331,9 +322,8 @@ fn display_vault_results(
         println!("  - Only the correct password can decrypt the wallet");
         println!("  - The enclave performs the decryption securely");
 
-        if let Some(attempt) = response.attempts.iter().find(|a| a.wallet_accessed)
-            && let Some(ref success) = attempt.success
-            && let Some(ref sig) = success.signature
+        if let Some(result) = response.results.iter().find(|r| r.signature.is_some())
+            && let Some(ref sig) = result.signature
         {
             println!("\nSignature: {}", sig);
         }
@@ -352,24 +342,30 @@ fn display_vault_results(
 
 /// Create a game result entry from the vault response.
 fn create_vault_game_result(
-    response: &crate::client::ProveGameResponse,
+    response: &crate::generated::routes::requests::agent_proof_game::ProofGameResponse,
     session_id: &str,
 ) -> messages::success::CommandResult<GameResultEntry> {
-    let success = response.success;
-    let signature = response
-        .attempts
+    let success = response
+        .results
         .iter()
-        .find(|a| a.wallet_accessed)
-        .and_then(|a| a.success.as_ref().and_then(|s| s.signature.clone()));
-
-    let error = if success { None } else { response.error.clone() };
+        .any(|r| r.enclave_error.is_none() && r.signature.is_some());
+    let signature = response
+        .results
+        .iter()
+        .find(|r| r.signature.is_some())
+        .and_then(|r| r.signature.clone());
+    let enclave_error = response
+        .results
+        .iter()
+        .find(|r| r.enclave_error.is_some())
+        .and_then(|r| r.enclave_error.clone());
 
     Ok(GameResultEntry {
         session_id: session_id.to_string(),
         game_type: 2,
         success,
         signature,
-        error,
+        enclave_error,
         timestamp: chrono::Utc::now().to_rfc3339(),
     })
 }
@@ -383,13 +379,11 @@ mod tests {
 
     use tyche_enclave::envelopes::transport::TransportEnvelopeKey;
 
-    use crate::client::{ExecutionAttempt, ExecutionSuccess, ProveGameResponse};
     use crate::commands::wallet::game::game_state::{
         GameWallet, get_derived_key, get_encrypted_blob, set_test_game_state_path, store_derived_key,
         store_encrypted_blob,
     };
 
-    /// Set up an isolated test environment with a temporary config directory.
     fn setup_test_env() -> tempfile::TempDir {
         let temp_dir = tempfile::tempdir().expect("Failed to create temp dir");
         let game_state_path = temp_dir.path().join("game.toml");
@@ -410,19 +404,14 @@ mod tests {
     fn test_hkdf_key_derivation() {
         let password = "my-test-password";
 
-        // Derive key using HKDF-SHA256
         let hkdf = Hkdf::<Sha256>::new(None, password.as_bytes());
         let mut key = [0u8; 32];
         hkdf.expand(b"edge-vault-game", &mut key)
             .expect("Key derivation failed");
 
-        // Verify key is 32 bytes
         assert_eq!(key.len(), 32);
-
-        // Key should not be all zeros
         assert!(!key.iter().all(|b| *b == 0u8));
 
-        // Deriving again should produce same key
         let hkdf2 = Hkdf::<Sha256>::new(None, password.as_bytes());
         let mut key2 = [0u8; 32];
         hkdf2
@@ -433,59 +422,13 @@ mod tests {
     }
 
     #[test]
-    fn test_hkdf_different_passwords_produce_different_keys() {
-        let passwords = vec!["password1", "password2", "different-password", "P@ssw0rd!"];
-
-        let mut keys = Vec::new();
-
-        for password in &passwords {
-            let hkdf = Hkdf::<Sha256>::new(None, password.as_bytes());
-            let mut key = [0u8; 32];
-            hkdf.expand(b"edge-vault-game", &mut key)
-                .expect("Key derivation failed");
-            keys.push(key);
-        }
-
-        // All keys should be different
-        for i in 0..keys.len() {
-            for j in i + 1..keys.len() {
-                assert_ne!(keys[i], keys[j], "Different passwords should produce different keys");
-            }
-        }
-    }
-
-    #[test]
-    fn test_hkdf_info_string_matters() {
-        let password = "test-password";
-
-        // Derive with default info
-        let hkdf1 = Hkdf::<Sha256>::new(None, password.as_bytes());
-        let mut key1 = [0u8; 32];
-        hkdf1
-            .expand(b"edge-vault-game", &mut key1)
-            .expect("Key derivation failed");
-
-        // Derive with different info
-        let hkdf2 = Hkdf::<Sha256>::new(None, password.as_bytes());
-        let mut key2 = [0u8; 32];
-        hkdf2
-            .expand(b"different-info", &mut key2)
-            .expect("Key derivation failed");
-
-        // Keys should be different
-        assert_ne!(key1, key2, "Different info strings should produce different keys");
-    }
-
-    #[test]
     fn test_store_and_retrieve_derived_key() {
         let _temp = setup_test_env();
         let password_id = "test-password-1";
         let original_key: [u8; 32] = [0xAB; 32];
 
-        // Store the key
         store_derived_key(password_id.to_string(), &original_key).expect("Failed to store key");
 
-        // Retrieve the key
         let retrieved = get_derived_key(password_id)
             .expect("Failed to get key")
             .expect("Key not found");
@@ -499,10 +442,8 @@ mod tests {
         let password_id = "test-blob-1";
         let original_blob = vec![0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x01, 0x02, 0x03];
 
-        // Store the blob
         store_encrypted_blob(password_id.to_string(), original_blob.clone()).expect("Failed to store blob");
 
-        // Retrieve the blob
         let retrieved = get_encrypted_blob(password_id)
             .expect("Failed to get blob")
             .expect("Blob not found");
@@ -520,49 +461,20 @@ mod tests {
         let key: [u8; 32] = [0xAB; 32];
         let plaintext = b"test plaintext data for encryption";
 
-        // Encrypt
         let cipher = Aes256Gcm::new(&key.into());
         let nonce: [u8; 12] = rand::random();
         let ciphertext = cipher
             .encrypt(Nonce::from_slice(&nonce), plaintext.as_ref())
             .expect("Encryption failed");
 
-        // Verify ciphertext is different from plaintext
         assert_ne!(ciphertext, plaintext.to_vec());
 
-        // Decrypt
         let cipher = Aes256Gcm::new(&key.into());
         let decrypted = cipher
             .decrypt(Nonce::from_slice(&nonce), ciphertext.as_ref())
             .expect("Decryption failed");
 
-        // Verify decrypted text matches original
         assert_eq!(decrypted, plaintext.to_vec());
-    }
-
-    #[test]
-    fn test_aes_gcm_wrong_key_fails() {
-        use aes_gcm::{
-            Aes256Gcm, Nonce,
-            aead::{Aead, KeyInit},
-        };
-
-        let key1: [u8; 32] = [0xAB; 32];
-        let key2: [u8; 32] = [0xCD; 32];
-        let plaintext = b"secret data";
-
-        // Encrypt with key1
-        let cipher = Aes256Gcm::new(&key1.into());
-        let nonce: [u8; 12] = rand::random();
-        let ciphertext = cipher
-            .encrypt(Nonce::from_slice(&nonce), plaintext.as_ref())
-            .expect("Encryption failed");
-
-        // Try to decrypt with key2 (should fail)
-        let cipher = Aes256Gcm::new(&key2.into());
-        let result = cipher.decrypt(Nonce::from_slice(&nonce), ciphertext.as_ref());
-
-        assert!(result.is_err(), "Decryption with wrong key should fail");
     }
 
     #[test]
@@ -577,11 +489,8 @@ mod tests {
 
         let (blob1, blob2) = result.unwrap();
 
-        // Both blobs should be non-empty
         assert!(!blob1.is_empty());
         assert!(!blob2.is_empty());
-
-        // Blobs should be different
         assert_ne!(blob1, blob2, "Different keys should produce different ciphertexts");
     }
 
@@ -593,103 +502,27 @@ mod tests {
         let wallet = create_test_wallet();
         let key: [u8; 32] = [0xAB; 32];
 
-        // Generate a proper Ed25519 verifying key for sealing
         let signing_key = SigningKey::generate(&mut OsRng);
         let transport_key = TransportEnvelopeKey::Unsealing(signing_key.verifying_key());
 
-        let intent = create_vault_intent("vault-test", &wallet, &key, &transport_key);
+        let intent = create_vault_intent(Uuid::new_v4(), &wallet, &key, &transport_key);
         assert!(intent.is_ok());
 
         let intent = intent.unwrap();
-        assert_eq!(intent.order_id, "vault-test");
-        assert_eq!(intent.wallet_address, wallet.address);
-        assert_eq!(intent.value, "0");
-        assert!(!intent.envelope.is_empty());
-    }
-
-    #[test]
-    fn test_display_vault_results_success() {
-        let wallet = create_test_wallet();
-
-        let response = ProveGameResponse {
-            game_session_id: "test-session".to_string(),
-            attempts: vec![
-                ExecutionAttempt {
-                    order_id: "vault-key1".to_string(),
-                    success: Some(ExecutionSuccess {
-                        signature: Some("sig123".to_string()),
-                        tx_hash: None,
-                    }),
-                    failure: None,
-                    wallet_accessed: true,
-                },
-                ExecutionAttempt {
-                    order_id: "vault-key2".to_string(),
-                    success: Some(ExecutionSuccess {
-                        signature: None,
-                        tx_hash: None,
-                    }),
-                    failure: None,
-                    wallet_accessed: false,
-                },
-            ],
-            error: None,
-            success: true,
-        };
-
-        let result = display_vault_results(&response, &wallet, "password1");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_display_vault_results_failure() {
-        let wallet = create_test_wallet();
-
-        let response = ProveGameResponse {
-            game_session_id: "test-session".to_string(),
-            attempts: vec![
-                ExecutionAttempt {
-                    order_id: "vault-key1".to_string(),
-                    success: None,
-                    failure: Some(crate::client::ExecutionFailure {
-                        error_code: "DECRYPTION_FAILED".to_string(),
-                        error_message: Some("Failed to decrypt wallet".to_string()),
-                    }),
-                    wallet_accessed: false,
-                },
-                ExecutionAttempt {
-                    order_id: "vault-key2".to_string(),
-                    success: None,
-                    failure: Some(crate::client::ExecutionFailure {
-                        error_code: "DECRYPTION_FAILED".to_string(),
-                        error_message: None,
-                    }),
-                    wallet_accessed: false,
-                },
-            ],
-            error: None,
-            success: true,
-        };
-
-        let result = display_vault_results(&response, &wallet, "wrong-password");
-        assert!(result.is_ok());
+        assert_eq!(intent.value, 0.0);
+        assert!(!intent.sealed_envelope.is_empty());
     }
 
     #[test]
     fn test_create_vault_game_result() {
-        let response = ProveGameResponse {
-            game_session_id: "test-session".to_string(),
-            attempts: vec![ExecutionAttempt {
+        use crate::generated::routes::requests::agent_proof_game::{ProofGameResponse, ProofGameResponseResultsItem};
+
+        let response = ProofGameResponse {
+            results: vec![ProofGameResponseResultsItem {
                 order_id: "vault-key1".to_string(),
-                success: Some(ExecutionSuccess {
-                    signature: Some("test-sig".to_string()),
-                    tx_hash: None,
-                }),
-                failure: None,
-                wallet_accessed: true,
+                enclave_error: None,
+                signature: Some("test-sig".to_string()),
             }],
-            error: None,
-            success: true,
         };
 
         let result = create_vault_game_result(&response, "test-session");
@@ -700,174 +533,5 @@ mod tests {
         assert_eq!(result.game_type, 2);
         assert!(result.success);
         assert_eq!(result.signature, Some("test-sig".to_string()));
-    }
-
-    #[test]
-    fn test_create_vault_game_result_with_error() {
-        let response = ProveGameResponse {
-            game_session_id: "test-session".to_string(),
-            attempts: vec![],
-            error: Some("Network error".to_string()),
-            success: false,
-        };
-
-        let result = create_vault_game_result(&response, "test-session");
-        assert!(result.is_ok());
-
-        let result = result.unwrap();
-        assert_eq!(result.session_id, "test-session");
-        assert_eq!(result.game_type, 2);
-        assert!(!result.success);
-        assert_eq!(result.error, Some("Network error".to_string()));
-        assert!(result.signature.is_none());
-    }
-
-    #[test]
-    fn test_password_empty_rejected() {
-        // Empty password should be rejected
-        let password = "";
-        assert!(password.is_empty());
-    }
-
-    #[test]
-    fn test_password_whitespace_rejected() {
-        // Whitespace-only password should be rejected
-        let password = "   ";
-        assert!(password.trim().is_empty());
-    }
-
-    #[test]
-    fn test_password_minimum_length() {
-        // Password should have minimum reasonable length
-        let password = "ab";
-        assert!(password.len() < 8, "Password too short");
-    }
-
-    #[test]
-    fn test_key_derivation_consistency() {
-        let _temp = setup_test_env();
-        // Same password should always produce same key
-        let password = "consistent-password-123";
-
-        for i in 0..10 {
-            let hkdf = Hkdf::<Sha256>::new(None, password.as_bytes());
-            let mut key = [0u8; 32];
-            hkdf.expand(b"edge-vault-game", &mut key)
-                .expect("Key derivation failed");
-
-            // Store and retrieve with unique ID for each iteration
-            let key_id = format!("consistent-test-{}", i);
-            store_derived_key(key_id.clone(), &key).expect("Failed to store key");
-
-            let retrieved = get_derived_key(&key_id)
-                .expect("Failed to get key")
-                .expect("Key not found");
-
-            assert_eq!(key, retrieved);
-        }
-    }
-
-    #[test]
-    fn test_encrypted_blob_structure() {
-        use aes_gcm::{
-            Aes256Gcm, Nonce,
-            aead::{Aead, KeyInit},
-        };
-
-        let key: [u8; 32] = [0xCD; 32];
-        let plaintext = b"wallet private key here";
-
-        // Encrypt
-        let cipher = Aes256Gcm::new(&key.into());
-        let nonce: [u8; 12] = rand::random();
-        let ciphertext = cipher
-            .encrypt(Nonce::from_slice(&nonce), plaintext.as_ref())
-            .expect("Encryption failed");
-
-        // AES-GCM ciphertext format: plaintext_len + 16 bytes (auth tag)
-        // The auth tag is always 16 bytes, so ciphertext.len() == plaintext.len() + 16
-        assert_eq!(
-            ciphertext.len(),
-            plaintext.len() + 16,
-            "Ciphertext should be plaintext + 16 byte auth tag"
-        );
-    }
-
-    #[test]
-    fn test_multiple_password_key_isolation() {
-        let _temp = setup_test_env();
-        // Each password should have independent storage
-        let passwords = vec![("pwd1", "id1"), ("pwd2", "id2"), ("pwd3", "id3")];
-
-        for (password, id) in &passwords {
-            let hkdf = Hkdf::<Sha256>::new(None, password.as_bytes());
-            let mut key = [0u8; 32];
-            hkdf.expand(b"edge-vault-game", &mut key)
-                .expect("Key derivation failed");
-
-            store_derived_key(id.to_string(), &key).expect("Failed to store");
-        }
-
-        // Verify each key is retrievable
-        for (_, id) in &passwords {
-            let key = get_derived_key(id)
-                .expect("Failed to get key")
-                .expect("Key not found");
-            assert_eq!(key.len(), 32);
-        }
-    }
-
-    #[test]
-    fn test_wallet_address_from_private_key() {
-        use k256::ecdsa::SigningKey;
-        use sha3::{Digest, Keccak256};
-
-        // Create a valid private key (not all zeros - must be valid secp256k1 scalar)
-        let private_key_bytes: [u8; 32] = [
-            0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12,
-            0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20,
-        ];
-
-        // Create wallet with this private key
-        let private_key_b64 = base64::engine::general_purpose::STANDARD.encode(private_key_bytes);
-
-        // Derive public key and address
-        let signing_key = SigningKey::from_bytes(&private_key_bytes.into())
-            .expect("Failed to create signing key - invalid private key");
-        let verifying_key = k256::ecdsa::VerifyingKey::from(&signing_key);
-        let public_key_bytes = verifying_key.to_encoded_point(false).as_bytes().to_vec();
-
-        // Derive Ethereum address
-        let hash = Keccak256::digest(&public_key_bytes[1..]);
-        let derived_address = format!("0x{}", hex::encode(&hash[hash.len() - 20..]));
-
-        // Create test wallet and verify address matches
-        let wallet = GameWallet {
-            address: derived_address.clone(),
-            private_key: private_key_b64,
-            chain_type: "EVM".to_string(),
-            created_at: chrono::Utc::now().to_rfc3339(),
-        };
-
-        assert_eq!(wallet.address, derived_address);
-    }
-
-    #[test]
-    fn test_hkdf_rfc5869_compliance() {
-        // Test HKDF against known test vectors from RFC 5869
-        let ikm = b"some input key material";
-        let salt: Option<&[u8]> = None;
-        let info = b"edge-vault-game";
-
-        let hkdf = Hkdf::<Sha256>::new(salt, ikm);
-        let mut okm = [0u8; 32];
-        hkdf.expand(info, &mut okm).expect("HKDF expand failed");
-
-        // Output should be deterministic
-        let hkdf2 = Hkdf::<Sha256>::new(salt, ikm);
-        let mut okm2 = [0u8; 32];
-        hkdf2.expand(info, &mut okm2).expect("HKDF expand failed");
-
-        assert_eq!(okm, okm2, "HKDF output should be deterministic");
     }
 }

@@ -13,7 +13,7 @@ use poseidon::app::cli::Cli;
 use poseidon::app::runner::run;
 use poseidon::app::{KeyCreateFn, KeyDeleteFn, KeyLockFn, KeyUnlockFn, KeyUpdateFn};
 use poseidon::client::IrisClient;
-use poseidon::config::{set_config_path_override, should_use_keyring};
+use poseidon::config::{set_config_path, should_use_keyring};
 use poseidon::messages;
 use poseidon::messages::success::CommandResult;
 
@@ -71,10 +71,8 @@ async fn main() {
     // Parse CLI arguments early to get config path override
     let cli = Cli::parse();
 
-    // Set config path override if provided via --config or EDGE_CONFIG
-    if let Some(config_path) = cli.config {
-        set_config_path_override(Some(PathBuf::from(config_path)));
-    }
+    // Set config path override from the --config flag (always has a value via default)
+    set_config_path(Some(PathBuf::from(cli.config)));
 
     // Select the appropriate key command implementations based on config
     let (key_create, key_unlock, key_lock, key_update, key_delete): (

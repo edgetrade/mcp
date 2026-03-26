@@ -22,7 +22,7 @@ pub async fn handle_register_alert(
     client: IrisClient,
     manifest: Arc<RwLock<McpManifest>>,
     alert_registry: AlertRegistry,
-    http_client: reqwest::Client,
+    http_client: reqwest::Client, // TODO: remove
 ) -> Result<CallToolResult, McpError> {
     let alert_name = match data.get("alert_name").and_then(|v| v.as_str()) {
         Some(n) => n.to_string(),

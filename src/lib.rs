@@ -10,6 +10,9 @@ pub mod session;
 pub mod utils;
 pub mod wallet;
 
+#[rustfmt::skip]
+pub mod generated;
+
 #[cfg(test)]
 pub mod test_utils {
     //! Shared test utilities for ensuring test isolation.

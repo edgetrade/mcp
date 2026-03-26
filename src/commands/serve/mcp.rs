@@ -348,7 +348,7 @@ impl EdgeServer {
         Ok(())
     }
 
-    pub async fn serve_http(self, host: &str, port: u16, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn serve_http(self, host: &str, port: &u16, path: &str) -> Result<(), Box<dyn std::error::Error>> {
         use rmcp::transport::streamable_http_server::session::local::LocalSessionManager;
         use rmcp::transport::streamable_http_server::{StreamableHttpServerConfig, StreamableHttpService};
 

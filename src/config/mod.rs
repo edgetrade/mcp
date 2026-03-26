@@ -7,7 +7,7 @@
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
-use std::sync::OnceLock;
+use std::sync::{LazyLock, OnceLock};
 
 use serde::{Deserialize, Serialize};
 
@@ -16,14 +16,35 @@ pub const CONFIG_DIR_NAME: &str = "edge";
 /// Default config file name
 pub const CONFIG_FILE_NAME: &str = "config.toml";
 
+/// Returns the default config file path, checking EDGE_CONFIG env var first.
+///
+/// This function is used by both the CLI (for default_value) and Config::config_path()
+/// to ensure consistent path resolution.
+pub fn default_config_path_buf() -> Option<PathBuf> {
+    // Check for EDGE_CONFIG env var first
+    if let Ok(env_path) = std::env::var("EDGE_CONFIG") {
+        return Some(PathBuf::from(env_path));
+    }
+
+    // Fall back to XDG config directory
+    dirs::config_dir().map(|d| d.join(CONFIG_DIR_NAME).join(CONFIG_FILE_NAME))
+}
+
+/// Lazily computed default config file path string for use in CLI defaults.
+pub static DEFAULT_CONFIG_PATH: LazyLock<String> = LazyLock::new(|| {
+    default_config_path_buf()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|| format!("<config-dir>/{}/{})", CONFIG_DIR_NAME, CONFIG_FILE_NAME))
+});
+
 /// Global override for config file path (set via --config flag or EDGE_CONFIG env var)
 static CONFIG_PATH_OVERRIDE: OnceLock<Option<PathBuf>> = OnceLock::new();
 
-/// Set the global config file path override.
+/// Set the global config file path.
 ///
 /// This should be called early in main() before any config operations.
 /// Once set, all config operations will use this path instead of the default.
-pub fn set_config_path_override(path: Option<PathBuf>) {
+pub fn set_config_path(path: Option<PathBuf>) {
     let _ = CONFIG_PATH_OVERRIDE.set(path);
 }
 
@@ -33,6 +54,9 @@ pub fn set_config_path_override(path: Option<PathBuf>) {
 /// stored in `~/.config/edge/config.toml` (XDG config directory).
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Config {
+    /// Edge API key for authentication
+    #[serde(default)]
+    pub api_key: Option<String>,
     /// Session storage configuration
     #[serde(default)]
     pub session: SessionConfig,
@@ -154,7 +178,7 @@ impl Config {
 
     /// Get the path to the config file.
     ///
-    /// First checks for a global override set via `set_config_path_override()`.
+    /// First checks for a global override set via `set_config_path()`.
     /// If no override is set, returns the platform-specific XDG config path:
     /// - Linux: `~/.config/edge/config.toml`
     /// - macOS: `~/Library/Application Support/edge/config.toml`
@@ -171,11 +195,8 @@ impl Config {
             return Ok(path.clone());
         }
 
-        // Fall back to XDG config directory
-        let config_dir = dirs::config_dir()
-            .ok_or(ConfigError::NoConfigDir)?
-            .join(CONFIG_DIR_NAME);
-        Ok(config_dir.join(CONFIG_FILE_NAME))
+        // Use the default path resolver (checks EDGE_CONFIG env var, then XDG)
+        default_config_path_buf().ok_or(ConfigError::NoConfigDir)
     }
 
     /// Check if the configuration file exists.
@@ -248,6 +269,7 @@ mod tests {
     #[test]
     fn test_config_roundtrip() {
         let config = Config {
+            api_key: None,
             session: SessionConfig {
                 use_keyring: Some(true),
             },
@@ -266,6 +288,7 @@ mod tests {
     #[test]
     fn test_enclave_config_custom_values() {
         let config = Config {
+            api_key: None,
             session: SessionConfig::default(),
             manifest_last_fetched: None,
             enclave: EnclaveConfig {

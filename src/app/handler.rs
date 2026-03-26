@@ -3,45 +3,29 @@ use std::process;
 use clap::CommandFactory;
 use tyche_enclave::types::chain_type::ChainType;
 
+use crate::app::cli::Transport;
 use crate::commands;
 use crate::commands::serve::mcp::EdgeServer;
 use crate::manifest::McpManifest;
 use crate::messages;
 use crate::utils::urls::EDGE_MCP_URL;
 
-use super::cli::{Cli, KeyCommand, SkillCommand, WalletCommand};
+use super::cli::{Cli, KeyCommand, ServeArgs, SkillCommand, WalletCommand};
 use super::{KeyCreateFn, KeyDeleteFn, KeyLockFn, KeyUnlockFn, KeyUpdateFn};
 
-pub async fn handle_server(cli: &Cli, server: EdgeServer) -> Result<(), i32> {
-    use super::cli::Commands;
-
-    match &cli.command {
-        Some(Commands::Server { host, port, path }) => server.serve_http(host, *port, path).await.map_err(|e| {
-            messages::error::mcp_server_error(&e.to_string());
-            1
-        }),
-        None if cli.transport == "sse" => {
-            messages::error::deprecated_transport_sse();
-            server
-                .serve_http("127.0.0.1", 3000, "mcp")
-                .await
-                .map_err(|e| {
-                    messages::error::mcp_server_error(&e.to_string());
-                    1
-                })
-        }
-        None if cli.transport == "http" => server
-            .serve_http("127.0.0.1", 3000, "mcp")
+pub async fn serve(args: &ServeArgs, server: EdgeServer) -> Result<(), i32> {
+    match args.transport {
+        Transport::Http => server
+            .serve_http(&args.host, &args.port, &args.path)
             .await
             .map_err(|e| {
                 messages::error::mcp_server_error(&e.to_string());
                 1
             }),
-        None => server.serve_stdio().await.map_err(|e| {
+        Transport::Stdio => server.serve_stdio().await.map_err(|e| {
             messages::error::mcp_server_error(&e.to_string());
             1
         }),
-        _ => unreachable!(),
     }
 }
 

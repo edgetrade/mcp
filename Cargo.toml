@@ -13,11 +13,27 @@ default = []
 keyring-tests = []
 
 [build-dependencies]
+heck = { version = "0.5.0" }
+prettyplease = { version = "0.2.37" }
+proc-macro2 = { version = "1.0.106" }
+quote = { version = "1.0.45" }
+schemars = { version = "0.8.22" }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = { version = "1.0.149" }
+syn = { version = "2.0.117" }
+typify = { version = "0.6.1" }
 vergen-gitcl = { version = "9.1.0", features = [] }
+
+[dev-dependencies]
+async-trait = { version = "0.1.89" }
+mockall = { version = "0.14.0" }
+tempfile = { version = "3.27.0" }
+
 
 [dependencies]
 # internals
 tyche-enclave = { path = "../tyche-enclave" }
+erato = { path = "../erato" }
 
 # externals
 aes-gcm = { version = "0.10.3" }
@@ -25,7 +41,12 @@ axum = { version = "0.8.8" }
 base64 = { version = "0.22.1" }
 bs58 = { version = "0.5.1" }
 chrono = { version = "0.4.44" }
-clap = { version = "4.6.0", features = ["derive", "env"] }
+clap = { version = "4.6.0", features = [
+  "derive",
+  "env",
+  "unicode",
+  "wrap_help",
+] }
 colored_json = { version = "5.0.0" }
 dirs = { version = "6.0.0" }
 ed25519-dalek = { version = "2.2.0", features = ["rand_core"] }
@@ -76,13 +97,9 @@ sha3 = { version = "0.10.8" }
 thiserror = { version = "2.0.18" }
 tokio = { version = "1.50.0", features = ["full"] }
 tokio-util = { version = "0.7.18" }
-toml = { version = "1.0.7" }
+toml = { version = "1.1.0" }
+typify = { version = "0.6.1" }
 tower = { version = "0.5.3" }
 url = { version = "2.5.8" }
 uuid = { version = "1.22.0", features = ["v4"] }
 zeroize = { version = "1.8.2", features = ["derive"] }
-
-[dev-dependencies]
-async-trait = { version = "0.1.89" }
-mockall = { version = "0.14.0" }
-tempfile = { version = "3.27.0" }

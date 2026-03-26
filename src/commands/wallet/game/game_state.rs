@@ -66,7 +66,7 @@ pub struct SealedIntentEntry {
     pub created_at: String,
 }
 
-/// A game result entry.
+/// A game result entry (aligned with ProofGameResponseResultsItem).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameResultEntry {
     /// Game session ID.
@@ -78,9 +78,9 @@ pub struct GameResultEntry {
     /// Signature if wallet was accessed.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub signature: Option<String>,
-    /// Error message if failed.
+    /// Error message if failed (enclave_error pattern).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
+    pub enclave_error: Option<String>,
     /// Timestamp.
     pub timestamp: String,
 }
@@ -405,7 +405,7 @@ mod tests {
             game_type: 1,
             success: true,
             signature: Some("sig".to_string()),
-            error: None,
+            enclave_error: None,
             timestamp: "2024-01-01T00:00:00Z".to_string(),
         };
 
