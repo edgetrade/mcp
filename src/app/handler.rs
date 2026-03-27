@@ -6,8 +6,10 @@ use tyche_enclave::types::chain_type::ChainType;
 use crate::app::cli::Transport;
 use crate::commands;
 use crate::commands::serve::mcp::EdgeServer;
+use crate::config::Config;
 use crate::manifest::McpManifest;
 use crate::messages;
+use crate::session::Session;
 use crate::utils::urls::EDGE_MCP_URL;
 
 use super::cli::{Cli, KeyCommand, ServeArgs, SkillCommand, WalletCommand};
@@ -29,33 +31,38 @@ pub async fn serve(args: &ServeArgs, server: EdgeServer) -> Result<(), i32> {
     }
 }
 
+pub struct KeyCommandArgs {
+    pub command: Option<KeyCommand>,
+    pub config: Config,
+    pub client: crate::client::IrisClient,
+}
+
 pub async fn handle_key(
-    command: &Option<KeyCommand>,
     key_create: KeyCreateFn,
     key_unlock: KeyUnlockFn,
     key_lock: KeyLockFn,
     key_update: KeyUpdateFn,
     key_delete: KeyDeleteFn,
-    client: &crate::client::IrisClient,
+    args: KeyCommandArgs,
 ) -> Result<(), i32> {
-    match command {
-        Some(KeyCommand::Create) => key_create().map_err(|e| {
+    match args.command {
+        Some(KeyCommand::Create) => key_create(args.config).map_err(|e| {
             messages::error::key_command_error("create", &e.to_string());
             1
         }),
-        Some(KeyCommand::Unlock) => key_unlock().map_err(|e| {
+        Some(KeyCommand::Unlock) => key_unlock(args.config).map_err(|e| {
             messages::error::key_command_error("unlock", &e.to_string());
             1
         }),
-        Some(KeyCommand::Lock) => key_lock().map_err(|e| {
+        Some(KeyCommand::Lock) => key_lock(args.config).map_err(|e| {
             messages::error::key_command_error("lock", &e.to_string());
             1
         }),
-        Some(KeyCommand::Update) => key_update(client).await.map_err(|e| {
+        Some(KeyCommand::Update) => key_update(args.config, &args.client).await.map_err(|e| {
             messages::error::key_command_error("update", &e.to_string());
             1
         }),
-        Some(KeyCommand::Delete) => key_delete().map_err(|e| {
+        Some(KeyCommand::Delete) => key_delete(args.config).map_err(|e| {
             messages::error::key_command_error("delete", &e.to_string());
             1
         }),
@@ -69,14 +76,18 @@ pub async fn handle_key(
     }
 }
 
-pub async fn handle_wallet(command: &Option<WalletCommand>, client: &crate::client::IrisClient) -> Result<(), i32> {
+pub async fn handle_wallet(
+    command: &Option<WalletCommand>,
+    session: &Session,
+    client: &crate::client::IrisClient,
+) -> Result<(), i32> {
     match command {
         Some(WalletCommand::Create { chain_type, name }) => {
             let chain_type = ChainType::parse(chain_type).map_err(|_| {
                 messages::error::invalid_chain_type();
                 1
             })?;
-            commands::wallet::wallet_create(chain_type, name.clone(), client)
+            commands::wallet::wallet_create(chain_type, name.clone(), session, client)
                 .await
                 .map_err(|e| {
                     messages::error::wallet_command_error("create", &e.to_string());
@@ -92,7 +103,7 @@ pub async fn handle_wallet(command: &Option<WalletCommand>, client: &crate::clie
                 messages::error::invalid_chain_type();
                 1
             })?;
-            commands::wallet::wallet_import(chain_type, name.clone(), key_file.clone(), client)
+            commands::wallet::wallet_import(chain_type, name.clone(), key_file.clone(), session, client)
                 .await
                 .map_err(|e| {
                     messages::error::wallet_command_error("import", &e.to_string());
@@ -109,7 +120,7 @@ pub async fn handle_wallet(command: &Option<WalletCommand>, client: &crate::clie
                 messages::error::wallet_command_error("delete", &e.to_string());
                 1
             }),
-        Some(WalletCommand::Prove { game, replay }) => commands::wallet::wallet_prove(*game, *replay, client)
+        Some(WalletCommand::Prove { game, replay }) => commands::wallet::wallet_prove(*game, *replay, session, client)
             .await
             .map_err(|e| {
                 messages::error::wallet_command_error("prove", &e.to_string());

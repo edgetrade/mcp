@@ -27,13 +27,10 @@ use crate::wallet::create::create_wallet;
 pub async fn wallet_create(
     chain: ChainType,
     name: Option<String>,
+    session: &Session,
     client: &crate::client::IrisClient,
 ) -> messages::success::CommandResult<()> {
-    // Step 1: Ensure session is ready
-    crate::commands::key::session_manager::ensure_session_ready("wallet")?;
-
     // Step 2: Get the UEK from session
-    let session = Session::new();
     let uek = session
         .get_user_encryption_key()
         .map_err(|e| messages::error::CommandError::Session(e.to_string()))?

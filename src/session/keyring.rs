@@ -3,7 +3,11 @@
 //! This module provides session storage exclusively via the OS keyring.
 //! There is NO file fallback - operations fail if the keyring is unavailable.
 
+use std::sync::Arc;
+
 use ed25519_dalek::SigningKey;
+
+use crate::config::Config;
 
 use super::crypto::UsersEncryptionKeys;
 
@@ -40,12 +44,18 @@ impl From<keyring::Error> for SessionError {
 #[derive(Debug)]
 pub struct Session {
     _private: (),
+
+    /// Config
+    config: Arc<Config>,
 }
 
 impl Session {
     /// Create a new desktop session manager.
-    pub fn new() -> Self {
-        Self { _private: () }
+    pub fn new(config: Config) -> Self {
+        Self {
+            _private: (),
+            config: Arc::new(config),
+        }
     }
 
     /// Get the keyring entry for the user encryption key.
@@ -62,6 +72,11 @@ impl Session {
     /// `Ok(None)` if no key is stored.
     pub fn get_user_encryption_key(&self) -> Result<Option<UsersEncryptionKeys>, SessionError> {
         self.get()
+    }
+
+    /// Get the agent ID from the session.
+    pub fn get_config(&self) -> Result<&Config, SessionError> {
+        Ok(&self.config)
     }
 
     /// Save the user encryption key to the keyring.
@@ -165,7 +180,7 @@ impl Session {
 
 impl Default for Session {
     fn default() -> Self {
-        Self::new()
+        Self::new(Config::default())
     }
 }
 

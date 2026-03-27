@@ -29,6 +29,7 @@ use crate::commands::key::filestore::storage::{
     default_blind_user_key_path, default_salt_path, default_storage_dir, ensure_storage_dir, load_blind_user_key,
     load_salt, store_blind_user_key, store_salt,
 };
+use crate::config::Config;
 use crate::session::Session;
 
 use super::types::{AuthError, AuthResult, AuthenticationResult, Authenticator};
@@ -245,7 +246,7 @@ pub fn verify_password(password: &str, stored_salt: &[u8]) -> AuthResult<MasterK
 ///
 /// # Errors
 /// Returns `AuthError` if authentication fails.
-pub async fn unlock_with_password() -> AuthResult<()> {
+pub async fn unlock_with_password(config: Config) -> AuthResult<()> {
     // Load salt
     let salt_path =
         default_salt_path().ok_or_else(|| AuthError::Storage("Could not determine salt path".to_string()))?;
@@ -282,7 +283,7 @@ pub async fn unlock_with_password() -> AuthResult<()> {
         .map_err(|_| AuthError::InvalidCredentials)?;
 
     // Store UEK in session
-    let session = Session::new();
+    let session = Session::new(config);
     session
         .unlock(&uek)
         .map_err(|e| AuthError::Storage(format!("Failed to store session: {}", e)))?;

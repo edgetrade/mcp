@@ -10,6 +10,7 @@ use std::path::PathBuf;
 use std::sync::{LazyLock, OnceLock};
 
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 /// Default config directory name
 pub const CONFIG_DIR_NAME: &str = "edge";
@@ -66,6 +67,9 @@ pub struct Config {
     /// Enclave security configuration
     #[serde(default)]
     pub enclave: EnclaveConfig,
+    /// Agent identifier for tracking
+    #[serde(default)]
+    pub agent_id: Option<Uuid>,
 }
 
 /// Enclave security and transport key configuration.
@@ -275,6 +279,7 @@ mod tests {
             },
             manifest_last_fetched: None,
             enclave: EnclaveConfig::default(),
+            agent_id: Some(Uuid::new_v4()),
         };
 
         let toml_str = toml::to_string(&config).unwrap();
@@ -283,6 +288,7 @@ mod tests {
         assert_eq!(parsed.session.use_keyring, Some(true));
         assert_eq!(parsed.enclave.verify_attestation, true);
         assert_eq!(parsed.enclave.transport_key_ttl_minutes, 15);
+        assert_ne!(parsed.agent_id, Some(Uuid::new_v4()));
     }
 
     #[test]
@@ -295,6 +301,7 @@ mod tests {
                 verify_attestation: false,
                 transport_key_ttl_minutes: 30,
             },
+            agent_id: None,
         };
 
         let toml_str = toml::to_string(&config).unwrap();
@@ -302,5 +309,30 @@ mod tests {
 
         assert_eq!(parsed.enclave.verify_attestation, false);
         assert_eq!(parsed.enclave.transport_key_ttl_minutes, 30);
+        assert_eq!(parsed.agent_id, None);
+    }
+
+    #[test]
+    fn test_backward_compatibility_no_agent_id() {
+        // Config TOML without agent_id (simulating existing config file)
+        let toml_str = r#"
+api_key = "some-api-key"
+
+[session]
+use_keyring = false
+
+[enclave]
+verify_attestation = true
+transport_key_ttl_minutes = 15
+"#;
+
+        let parsed: Config = toml::from_str(toml_str).unwrap();
+
+        // agent_id should default to None when not present in the config file
+        assert_eq!(parsed.agent_id, None);
+        assert_eq!(parsed.api_key, Some("some-api-key".to_string()));
+        assert_eq!(parsed.session.use_keyring, Some(false));
+        assert_eq!(parsed.enclave.verify_attestation, true);
+        assert_eq!(parsed.enclave.transport_key_ttl_minutes, 15);
     }
 }

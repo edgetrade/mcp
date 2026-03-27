@@ -22,12 +22,6 @@ pub mod test_utils {
 
     use std::sync::Mutex;
 
-    /// Global mutex for all keyring tests across all modules.
-    /// All keyring tests use the same keyring entry (service="edge", username="user-encryption-key"),
-    /// so they must be serialized to prevent conflicts when running tests in parallel.
-    #[cfg(feature = "keyring-tests")]
-    pub static KEYRING_TEST_MUTEX: Mutex<()> = Mutex::new(());
-
     /// Global mutex for all filestore session tests across all modules.
     /// Filestore session tests use the same session file path (~/.config/edge/session),
     /// so they must be serialized to prevent conflicts when running tests in parallel.
@@ -37,4 +31,10 @@ pub mod test_utils {
     /// Transport key cache tests use the same config directory (~/.config/edge/transport_keys.json),
     /// so they must be serialized to prevent conflicts when running tests in parallel.
     pub static TRANSPORT_CACHE_TEST_MUTEX: Mutex<()> = Mutex::new(());
+
+    /// Global mutex for all keyring tests across all modules.
+    /// All keyring tests use the same keyring entry (service="edge", username="user-encryption-key"),
+    /// so they must be serialized to prevent conflicts when running tests in parallel.
+    #[cfg(feature = "keyring-tests")]
+    pub static KEYRING_TEST_MUTEX: Mutex<()> = Mutex::new(());
 }

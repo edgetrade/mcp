@@ -50,11 +50,18 @@ pub mod error {
 ///  "description": "Output containing transport keys for inflight encryption",
 ///  "type": "object",
 ///  "required": [
+///    "agentId",
 ///    "attestation",
 ///    "deterministic",
 ///    "ephemeral"
 ///  ],
 ///  "properties": {
+///    "agentId": {
+///      "description": "The agent ID",
+///      "type": "string",
+///      "format": "uuid",
+///      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+///    },
 ///    "attestation": {
 ///      "description": "Base64-encoded attestation public key for transport encryption",
 ///      "type": "string",
@@ -85,6 +92,9 @@ pub mod error {
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct GetTransportKeyResponse {
+    ///The agent ID
+    #[serde(rename = "agentId")]
+    pub agent_id: ::uuid::Uuid,
     ///Base64-encoded attestation public key for transport encryption
     pub attestation: ::std::string::String,
     ///Base64-encoded deterministic public key for transport encryption

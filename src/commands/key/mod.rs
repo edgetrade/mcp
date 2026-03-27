@@ -6,4 +6,3 @@
 
 pub mod filestore;
 pub mod keyring;
-pub mod session_manager;

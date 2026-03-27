@@ -9,6 +9,7 @@ use crate::commands::key::filestore::derivation::{derive_master_key, derive_user
 use crate::commands::key::filestore::storage::{
     default_blind_user_key_path, default_salt_path, load_blind_user_key, load_salt,
 };
+use crate::config::Config;
 use crate::messages;
 use crate::session::Session;
 
@@ -91,8 +92,8 @@ fn key_unlock_internal(session: &Session) -> messages::success::CommandResult<bo
 /// - Password is incorrect
 /// - Key derivation fails
 /// - Decryption fails
-pub fn key_unlock() -> messages::success::CommandResult<()> {
-    let session = Session::new();
+pub fn key_unlock(config: Config) -> messages::success::CommandResult<()> {
+    let session = Session::new(config);
 
     match key_unlock_internal(&session)? {
         true => {
@@ -122,8 +123,8 @@ pub fn key_unlock() -> messages::success::CommandResult<()> {
 /// - Password is incorrect
 /// - Key derivation fails
 /// - Decryption fails
-pub fn key_unlock_with_context(context: &str) -> messages::success::CommandResult<()> {
-    let session = Session::new();
+pub fn key_unlock_with_context(context: &str, config: Config) -> messages::success::CommandResult<()> {
+    let session = Session::new(config);
 
     if context == "wallet" {
         messages::success::session_unlocking();

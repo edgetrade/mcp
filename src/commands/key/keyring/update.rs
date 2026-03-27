@@ -5,6 +5,7 @@
 
 use crate::client::{IrisClient, rotate_user_encryption_key};
 use crate::commands::key::keyring::keyring_create;
+use crate::config::Config;
 use crate::messages;
 use crate::session::KeyringSession as Session;
 
@@ -23,8 +24,8 @@ use crate::session::KeyringSession as Session;
 /// - No existing key exists (must create first)
 /// - Key generation fails
 /// - Keyring is inaccessible
-pub async fn keyring_update(client: &IrisClient) -> messages::success::CommandResult<()> {
-    let session = Session::new();
+pub async fn keyring_update(config: Config, client: &IrisClient) -> messages::success::CommandResult<()> {
+    let session = Session::new(config.clone());
 
     // Check if key exists first
     if !session.is_unlocked() {
@@ -42,7 +43,7 @@ pub async fn keyring_update(client: &IrisClient) -> messages::success::CommandRe
 
     let old_uek = old.unwrap();
 
-    keyring_create()?;
+    keyring_create(config)?;
 
     let new = session.get_user_encryption_key().unwrap();
     if new.is_none() {

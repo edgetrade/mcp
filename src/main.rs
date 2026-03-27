@@ -13,7 +13,7 @@ use poseidon::app::cli::Cli;
 use poseidon::app::runner::run;
 use poseidon::app::{KeyCreateFn, KeyDeleteFn, KeyLockFn, KeyUnlockFn, KeyUpdateFn};
 use poseidon::client::IrisClient;
-use poseidon::config::{set_config_path, should_use_keyring};
+use poseidon::config::{Config, set_config_path, should_use_keyring};
 use poseidon::messages;
 use poseidon::messages::success::CommandResult;
 
@@ -30,14 +30,50 @@ mod filestore {
     pub use poseidon::commands::key::filestore::{key_create, key_delete, key_lock, key_unlock, key_update};
 }
 
-/// Key update function wrapper for keyring variant.
-fn keyring_update_wrapper(client: &IrisClient) -> Pin<Box<dyn Future<Output = CommandResult<()>> + '_>> {
-    Box::pin(keyring::key_update(client))
+fn keyring_create_wrapper(config: Config) -> CommandResult<()> {
+    keyring::key_create(config)
 }
 
-/// Key update function wrapper for filestore variant.
-fn filestore_update_wrapper(client: &IrisClient) -> Pin<Box<dyn Future<Output = CommandResult<()>> + '_>> {
-    Box::pin(filestore::key_update(client))
+fn filestore_create_wrapper(_config: Config) -> CommandResult<()> {
+    filestore::key_create()
+}
+
+fn keyring_unlock_wrapper(_config: Config) -> CommandResult<()> {
+    keyring::key_unlock()
+}
+
+fn filestore_unlock_wrapper(config: Config) -> CommandResult<()> {
+    filestore::key_unlock(config)
+}
+
+fn keyring_lock_wrapper(_config: Config) -> CommandResult<()> {
+    keyring::key_lock()
+}
+
+fn filestore_lock_wrapper(config: Config) -> CommandResult<()> {
+    filestore::key_lock(config)
+}
+
+fn keyring_update_wrapper(
+    config: Config,
+    client: &IrisClient,
+) -> Pin<Box<dyn Future<Output = CommandResult<()>> + '_>> {
+    Box::pin(keyring::key_update(config, client))
+}
+
+fn filestore_update_wrapper(
+    config: Config,
+    client: &IrisClient,
+) -> Pin<Box<dyn Future<Output = CommandResult<()>> + '_>> {
+    Box::pin(filestore::key_update(config, client))
+}
+
+fn keyring_delete_wrapper(_config: Config) -> CommandResult<()> {
+    keyring::key_delete()
+}
+
+fn filestore_delete_wrapper(_config: Config) -> CommandResult<()> {
+    filestore::key_delete()
 }
 
 /// Select key command implementations based on configuration.
@@ -48,20 +84,20 @@ fn filestore_update_wrapper(client: &IrisClient) -> Pin<Box<dyn Future<Output = 
 fn select_key_commands() -> (KeyCreateFn, KeyUnlockFn, KeyLockFn, KeyUpdateFn, KeyDeleteFn) {
     if should_use_keyring() {
         (
-            keyring::key_create,
-            keyring::key_unlock,
-            keyring::key_lock,
+            keyring_create_wrapper,
+            keyring_unlock_wrapper,
+            keyring_lock_wrapper,
             Box::new(keyring_update_wrapper),
-            keyring::key_delete,
+            keyring_delete_wrapper,
         )
     } else {
         messages::warning::file_storage_fallback();
         (
-            filestore::key_create,
-            filestore::key_unlock,
-            filestore::key_lock,
+            filestore_create_wrapper,
+            filestore_unlock_wrapper,
+            filestore_lock_wrapper,
             Box::new(filestore_update_wrapper),
-            filestore::key_delete,
+            filestore_delete_wrapper,
         )
     }
 }

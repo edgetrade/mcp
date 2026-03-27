@@ -52,7 +52,9 @@ pub mod error {
 ///    "chain_id",
 ///    "encrypted_wallet_blob",
 ///    "orders",
-///    "wallet_address"
+///    "unsigned_tx",
+///    "wallet_address",
+///    "wallet_envelope"
 ///  ],
 ///  "properties": {
 ///    "chain_id": {
@@ -69,17 +71,11 @@ pub mod error {
 ///      "items": {
 ///        "type": "object",
 ///        "required": [
-///          "data",
 ///          "order_id",
 ///          "sealed_envelope",
 ///          "value"
 ///        ],
 ///        "properties": {
-///          "data": {
-///            "type": "string",
-///            "format": "hex",
-///            "pattern": "^[0-9a-fA-F]*$"
-///          },
 ///          "order_id": {
 ///            "type": "string",
 ///            "format": "uuid",
@@ -97,8 +93,17 @@ pub mod error {
 ///        }
 ///      }
 ///    },
+///    "unsigned_tx": {
+///      "type": "string"
+///    },
 ///    "wallet_address": {
 ///      "type": "string"
+///    },
+///    "wallet_envelope": {
+///      "type": "string",
+///      "format": "base64",
+///      "pattern": "^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$",
+///      "contentEncoding": "base64"
 ///    }
 ///  }
 ///}
@@ -109,7 +114,9 @@ pub struct ProofGameRequest {
     pub chain_id: ::std::string::String,
     pub encrypted_wallet_blob: ::std::string::String,
     pub orders: ::std::vec::Vec<ProofGameRequestOrdersItem>,
+    pub unsigned_tx: ::std::string::String,
     pub wallet_address: ::std::string::String,
+    pub wallet_envelope: ::std::string::String,
 }
 ///`ProofGameRequestOrdersItem`
 ///
@@ -119,17 +126,11 @@ pub struct ProofGameRequest {
 ///{
 ///  "type": "object",
 ///  "required": [
-///    "data",
 ///    "order_id",
 ///    "sealed_envelope",
 ///    "value"
 ///  ],
 ///  "properties": {
-///    "data": {
-///      "type": "string",
-///      "format": "hex",
-///      "pattern": "^[0-9a-fA-F]*$"
-///    },
 ///    "order_id": {
 ///      "type": "string",
 ///      "format": "uuid",
@@ -150,7 +151,6 @@ pub struct ProofGameRequest {
 /// </details>
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
 pub struct ProofGameRequestOrdersItem {
-    pub data: ::std::string::String,
     pub order_id: ::uuid::Uuid,
     pub sealed_envelope: ::std::string::String,
     pub value: f64,

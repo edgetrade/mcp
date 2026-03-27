@@ -2,6 +2,7 @@
 //!
 //! Implements session lock by clearing session keys from the OS keyring.
 
+use crate::config::Config;
 use crate::messages;
 use crate::session::Session;
 
@@ -17,8 +18,8 @@ use crate::session::Session;
 /// # Errors
 /// Returns an error if:
 /// - The session cannot be accessed (should not happen in normal operation)
-pub fn key_lock() -> messages::success::CommandResult<()> {
-    let session = Session::new();
+pub fn key_lock(config: Config) -> messages::success::CommandResult<()> {
+    let session = Session::new(config);
 
     if session.is_unlocked() {
         session
@@ -37,6 +38,7 @@ mod tests {
     use ed25519_dalek::SigningKey;
 
     use crate::commands::key::filestore::storage::delete_session_file;
+    use crate::config::Config;
     use crate::session::FileStoreSession;
     use crate::session::crypto::UsersEncryptionKeys;
     use crate::test_utils::FILESTORE_TEST_MUTEX;
@@ -54,7 +56,7 @@ mod tests {
         cleanup_session_file();
 
         // Use explicit file-based session for consistent test behavior
-        let session = FileStoreSession::new();
+        let session = FileStoreSession::new(Config::default());
 
         // First unlock with a test key
         let test_key = UsersEncryptionKeys::new(SigningKey::from_bytes(&[0x42u8; 32]), [0x42u8; 32], None);
@@ -76,7 +78,7 @@ mod tests {
         cleanup_session_file();
 
         // Use explicit file-based session for consistent test behavior
-        let session = FileStoreSession::new();
+        let session = FileStoreSession::new(Config::default());
 
         // Ensure it's locked (fresh session should be locked)
         assert!(!session.is_unlocked());
@@ -98,7 +100,7 @@ mod tests {
         cleanup_session_file();
 
         // Use explicit file-based session for consistent test behavior
-        let session = FileStoreSession::new();
+        let session = FileStoreSession::new(Config::default());
 
         // Initially locked
         assert!(!session.is_unlocked());

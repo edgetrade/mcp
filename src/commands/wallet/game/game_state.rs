@@ -358,6 +358,18 @@ pub fn get_encrypted_blob(password_id: &str) -> Result<Option<Vec<u8>>, GameStat
     }
 }
 
+/// Get the effective game state path with thread-local test override support.
+fn effective_game_state_path() -> Result<PathBuf, GameStateError> {
+    #[cfg(test)]
+    {
+        let test_path = TEST_GAME_STATE_PATH.with(|p| p.borrow().clone());
+        if let Some(path) = test_path {
+            return Ok(path);
+        }
+    }
+    game_state_path()
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
@@ -482,16 +494,4 @@ pub fn clear_test_game_state_path() {
     TEST_GAME_STATE_PATH.with(|p| {
         *p.borrow_mut() = None;
     });
-}
-
-/// Get the effective game state path with thread-local test override support.
-fn effective_game_state_path() -> Result<PathBuf, GameStateError> {
-    #[cfg(test)]
-    {
-        let test_path = TEST_GAME_STATE_PATH.with(|p| p.borrow().clone());
-        if let Some(path) = test_path {
-            return Ok(path);
-        }
-    }
-    game_state_path()
 }

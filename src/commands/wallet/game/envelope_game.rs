@@ -8,6 +8,7 @@
 
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
+use erato::models::ChainId;
 use hkdf::Hkdf;
 use sha2::Sha256;
 use tyche_enclave::envelopes::storage::WalletKey;
@@ -20,6 +21,7 @@ use tyche_enclave::envelopes::transport::{ExecutionPayload, SealedIntent, Transp
 use crate::client::proof_game;
 use crate::generated::routes::requests::agent_proof_game::ProofGameRequestOrdersItem;
 use crate::messages;
+use crate::session::Session;
 use crate::session::transport::get_transport_key;
 use crate::{client::IrisClient, session::crypto::UsersEncryptionKeys};
 
@@ -50,10 +52,18 @@ use super::{
 pub async fn play_game(
     replay: bool,
     user_key: &UsersEncryptionKeys,
+    session: &Session,
     client: &IrisClient,
 ) -> messages::success::CommandResult<()> {
     let session_id = generate_session_id();
     println!("Session ID: {}\n", session_id);
+
+    let agent_id = session
+        .get_config()
+        .map_err(|e| messages::error::CommandError::Session(e.to_string()))?
+        .clone()
+        .agent_id
+        .unwrap();
 
     // Step 1: Get or create game wallet
     let wallet = super::game_state::get_or_create_wallet(!replay)?;
@@ -98,22 +108,31 @@ pub async fn play_game(
     };
 
     // Step 6: Create intents for prove game
-    let intents = create_vault_intents(&wallet, &key1, &key2, &test_key, client).await?;
+    let intents = create_vault_intents(&wallet, &agent_id, &key1, &key2, &test_key, client).await?;
 
     // Step 7: Call proof_game
     println!("Sending vault unlock attempts to the enclave...\n");
 
-    let encrypted_wallet_blob = WalletKey::new(
-        ChainType::EVM,
-        wallet.address.clone(),
-        wallet.private_key.clone().into_bytes().to_vec(),
-    )
-    .seal(&user_key.storage)
-    .map_err(|e| messages::error::CommandError::Wallet(e.to_string()))?;
+    let private_key_bytes: [u8; 32] = base64::engine::general_purpose::STANDARD
+        .decode(wallet.private_key.clone())
+        .map_err(|e| messages::error::CommandError::Wallet(e.to_string()))?
+        .try_into()
+        .unwrap();
 
-    let response = proof_game(wallet.address.clone(), encrypted_wallet_blob, intents, client)
-        .await
+    let encrypted_wallet_blob = WalletKey::new(ChainType::EVM, wallet.address.clone(), private_key_bytes)
+        .seal(&user_key.storage)
         .map_err(|e| messages::error::CommandError::Wallet(e.to_string()))?;
+
+    let response = proof_game(
+        wallet.address.clone(),
+        encrypted_wallet_blob,
+        "".to_string().into_bytes(),
+        intents,
+        user_key,
+        client,
+    )
+    .await
+    .map_err(|e| messages::error::CommandError::Wallet(e.to_string()))?;
 
     // Step 8: Display results
     display_vault_results(&response, &wallet, &test_password)?;
@@ -231,6 +250,7 @@ fn load_existing_blobs() -> messages::success::CommandResult<(Vec<u8>, Vec<u8>)>
 /// Create vault intents for prove game.
 async fn create_vault_intents(
     wallet: &GameWallet,
+    agent_id: &Uuid,
     key1: &[u8; 32],
     key2: &[u8; 32],
     _test_key: &[u8; 32],
@@ -245,11 +265,11 @@ async fn create_vault_intents(
     let mut intents = Vec::new();
 
     // Create intent for password1 (key1)
-    let intent1 = create_vault_intent(Uuid::new_v4(), wallet, key1, &transport_key)?;
+    let intent1 = create_vault_intent(Uuid::new_v4(), agent_id, wallet, key1, &transport_key)?;
     intents.push(intent1);
 
     // Create intent for password2 (key2)
-    let intent2 = create_vault_intent(Uuid::new_v4(), wallet, key2, &transport_key)?;
+    let intent2 = create_vault_intent(Uuid::new_v4(), agent_id, wallet, key2, &transport_key)?;
     intents.push(intent2);
 
     println!("  Created {} vault unlock intents", intents.len());
@@ -259,6 +279,7 @@ async fn create_vault_intents(
 /// Create a single vault intent.
 fn create_vault_intent(
     order_id: Uuid,
+    agent_id: &Uuid,
     wallet: &GameWallet,
     key: &[u8; 32],
     transport_key: &TransportEnvelopeKey,
@@ -266,8 +287,8 @@ fn create_vault_intent(
     // Create the sealed intent
     let sealed_intent = SealedIntent {
         user_id: None,
-        agent_id: None,
-        chain_id: "1".to_string(),
+        agent_id: Some(agent_id.to_string()),
+        chain_id: ChainId::ETHEREUM.to_string(),
         wallet_address: wallet.address.clone(),
         value: "0".to_string(),
     };
@@ -285,7 +306,6 @@ fn create_vault_intent(
 
     let execute_intent = ProofGameRequestOrdersItem {
         order_id,
-        data: hex::encode([]), // Empty hex string
         value: 0.0,
         sealed_envelope: STANDARD.encode(&envelope),
     };
@@ -520,7 +540,7 @@ mod tests {
         let signing_key = SigningKey::generate(&mut OsRng);
         let transport_key = TransportEnvelopeKey::Unsealing(signing_key.verifying_key());
 
-        let intent = create_vault_intent(Uuid::new_v4(), &wallet, &key, &transport_key);
+        let intent = create_vault_intent(Uuid::new_v4(), &Uuid::new_v4(), &wallet, &key, &transport_key);
         assert!(intent.is_ok());
 
         let intent = intent.unwrap();

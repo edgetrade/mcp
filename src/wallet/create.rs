@@ -10,8 +10,7 @@ use sha3::{Digest as Sha3Digest, Keccak256};
 
 use tyche_enclave::{envelopes::storage::StorageEnvelope, envelopes::storage::WalletKey, types::chain_type::ChainType};
 
-use crate::client::IrisClient;
-use crate::client::upsert_encrypted_wallet;
+use crate::client::{IrisClient, upsert_wallet};
 use crate::session::crypto::UsersEncryptionKeys;
 
 use super::types::{Wallet, WalletError, WalletResult};
@@ -39,7 +38,7 @@ pub async fn create_wallet(
         ChainType::EVM => create_evm_wallet(user_key, name)?,
         ChainType::SVM => create_svm_wallet(user_key, name)?,
     };
-    upsert_encrypted_wallet(wallet, user_key, client).await
+    upsert_wallet(wallet, user_key, client).await
 }
 
 fn create_evm_wallet(user_key: &UsersEncryptionKeys, name: String) -> WalletResult<Wallet> {
@@ -59,7 +58,7 @@ fn create_evm_wallet(user_key: &UsersEncryptionKeys, name: String) -> WalletResu
     let hash = Keccak256::digest(&public_key_bytes[1..]);
     let address = format!("0x{}", hex::encode(&hash[hash.len() - 20..]));
 
-    let encrypted_private_key = WalletKey::new(ChainType::EVM, address.clone(), signing_key.to_bytes().to_vec())
+    let encrypted_private_key = WalletKey::new(ChainType::EVM, address.clone(), signing_key.to_bytes().into())
         .seal(&user_key.storage)
         .map_err(|e| WalletError::StorageFailed(e.to_string()))?;
 
@@ -80,7 +79,7 @@ fn create_svm_wallet(user_key: &UsersEncryptionKeys, name: String) -> WalletResu
     let address = bs58::encode(verifying_key.as_bytes()).into_string();
 
     // Encrypt private key (32-byte seed)
-    let encrypted_private_key = WalletKey::new(ChainType::SVM, address.clone(), signing_key.to_bytes().to_vec())
+    let encrypted_private_key = WalletKey::new(ChainType::SVM, address.clone(), signing_key.to_bytes())
         .seal(&user_key.storage)
         .map_err(|e| WalletError::StorageFailed(e.to_string()))?;
 

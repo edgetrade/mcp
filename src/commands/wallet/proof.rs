@@ -34,7 +34,12 @@ use super::game::{
 ///
 /// # Returns
 /// Ok(()) on success, or an error if the game fails
-pub async fn wallet_prove(game: Option<u8>, replay: bool, client: &IrisClient) -> messages::success::CommandResult<()> {
+pub async fn wallet_prove(
+    game: Option<u8>,
+    replay: bool,
+    session: &Session,
+    client: &IrisClient,
+) -> messages::success::CommandResult<()> {
     // Show welcome message
     println!("\n========================================");
     println!("         Welcome to the Proof Game     ");
@@ -52,7 +57,7 @@ pub async fn wallet_prove(game: Option<u8>, replay: bool, client: &IrisClient) -
         }
     }
 
-    let user_key = Session::new()
+    let user_key = session
         .get_user_encryption_key()
         .map_err(|e| messages::error::CommandError::Session(e.to_string()))?
         .ok_or_else(|| messages::error::CommandError::Session("Session unavailable".to_string()))?;
@@ -72,44 +77,44 @@ pub async fn wallet_prove(game: Option<u8>, replay: bool, client: &IrisClient) -
     match game_choice {
         1 => {
             println!("\n--- Game 1: The Blind Oracle ---\n");
-            intents_game::play_game(replay, &user_key, client).await?;
+            intents_game::play_game(replay, &user_key, session, client).await?;
 
             // After Game 1, prompt for replay
             if !replay && prompt_replay(1)? {
                 println!("\n--- Replaying Game 1 ---\n");
-                intents_game::play_game(true, &user_key, client).await?;
+                intents_game::play_game(true, &user_key, session, client).await?;
             }
         }
         2 => {
             println!("\n--- Game 2: The Vault ---\n");
-            envelope_game::play_game(replay, &user_key, client).await?;
+            envelope_game::play_game(replay, &user_key, session, client).await?;
 
             // After Game 2, prompt for replay
             if !replay && prompt_replay(2)? {
                 println!("\n--- Replaying Game 2 ---\n");
-                envelope_game::play_game(true, &user_key, client).await?;
+                envelope_game::play_game(true, &user_key, session, client).await?;
             }
         }
         3 => {
             // Play both games in sequence
             println!("\n--- Game 1: The Blind Oracle ---\n");
-            intents_game::play_game(replay, &user_key, client).await?;
+            intents_game::play_game(replay, &user_key, session, client).await?;
 
             // Prompt for replay after Game 1
             let replay_game1 = if !replay { prompt_replay(1)? } else { false };
             if replay_game1 {
                 println!("\n--- Replaying Game 1 ---\n");
-                intents_game::play_game(true, &user_key, client).await?;
+                intents_game::play_game(true, &user_key, session, client).await?;
             }
 
             println!("\n--- Game 2: The Vault ---\n");
-            envelope_game::play_game(replay, &user_key, client).await?;
+            envelope_game::play_game(replay, &user_key, session, client).await?;
 
             // Prompt for replay after Game 2
             let replay_game2 = if !replay { prompt_replay(2)? } else { false };
             if replay_game2 {
                 println!("\n--- Replaying Game 2 ---\n");
-                envelope_game::play_game(true, &user_key, client).await?;
+                envelope_game::play_game(true, &user_key, session, client).await?;
             }
         }
         _ => {

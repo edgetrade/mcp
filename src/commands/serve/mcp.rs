@@ -360,12 +360,12 @@ impl EdgeServer {
         };
         messages::error::http_server_starting(&addr, &path);
 
-        let config = StreamableHttpServerConfig {
-            stateful_mode: false,
-            ..Default::default()
-        };
         let session_manager = Arc::new(LocalSessionManager::default());
-        let service = StreamableHttpService::new(move || Ok(self.clone()), session_manager, config);
+        let service = StreamableHttpService::new(
+            move || Ok(self.clone()),
+            session_manager,
+            StreamableHttpServerConfig::default(),
+        );
         let router = axum::Router::new().nest_service(&path, service);
 
         let listener = tokio::net::TcpListener::bind(&addr).await?;

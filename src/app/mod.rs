@@ -7,11 +7,13 @@ use std::future::Future;
 use std::pin::Pin;
 
 use crate::client::IrisClient;
+use crate::config::Config;
 use crate::messages::success::CommandResult;
 
 /// Key command function type.
-pub type KeyCreateFn = fn() -> CommandResult<()>;
-pub type KeyUnlockFn = fn() -> CommandResult<()>;
-pub type KeyLockFn = fn() -> CommandResult<()>;
-pub type KeyUpdateFn = Box<dyn Fn(&IrisClient) -> Pin<Box<dyn Future<Output = CommandResult<()>> + '_>> + Send + Sync>;
-pub type KeyDeleteFn = fn() -> CommandResult<()>;
+pub type KeyCreateFn = fn(Config) -> CommandResult<()>;
+pub type KeyUnlockFn = fn(Config) -> CommandResult<()>;
+pub type KeyLockFn = fn(Config) -> CommandResult<()>;
+pub type KeyUpdateFn =
+    Box<dyn Fn(Config, &IrisClient) -> Pin<Box<dyn Future<Output = CommandResult<()>> + '_>> + Send + Sync>;
+pub type KeyDeleteFn = fn(Config) -> CommandResult<()>;

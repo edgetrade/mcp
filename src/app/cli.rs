@@ -130,7 +130,7 @@ pub struct ServeArgs {
 /// This allows us to do things like save your limit orders in our database without needing to
 /// worry that if someone stole those orders that your information would be in the slightest
 /// bit compromised.
-#[derive(Subcommand)]
+#[derive(Subcommand, Clone)]
 pub enum KeyCommand {
     /// Create new key configuration
     Create,

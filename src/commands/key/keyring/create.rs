@@ -12,6 +12,7 @@ use sha2::Sha256;
 use tyche_enclave::envelopes::storage::derive_storage_key;
 use tyche_enclave::types::constants::USER_ENCRYPTION_KEY_HKDF_INFO;
 
+use crate::config::Config;
 use crate::messages;
 use crate::session::KeyringSession as Session;
 use crate::session::crypto::UsersEncryptionKeys;
@@ -36,12 +37,12 @@ use crate::session::crypto::UsersEncryptionKeys;
 /// - Key already exists (idempotent protection via keyring)
 /// - Passwords do not match
 /// - HKDF expansion fails
-pub fn keyring_create_with_context(context: &str) -> messages::success::CommandResult<()> {
+pub fn keyring_create_with_context(context: &str, config: Config) -> messages::success::CommandResult<()> {
     // Show context-specific intro message
     if context == "wallet" {
         messages::success::no_key_found_create();
     } else {
-        let session = Session::new();
+        let session = Session::new(config.clone());
         if session.is_unlocked() {
             messages::success::key_exists();
             return Ok(());
@@ -85,7 +86,7 @@ pub fn keyring_create_with_context(context: &str) -> messages::success::CommandR
     }
 
     // Create and store the key
-    keyring_create_core(password_trimmed)?;
+    keyring_create_core(password_trimmed, config)?;
 
     // Show context-specific success message
     messages::success::key_created();
@@ -108,8 +109,8 @@ pub fn keyring_create_with_context(context: &str) -> messages::success::CommandR
 /// - Keyring is unavailable
 /// - Key already exists (idempotent protection via keyring)
 /// - HKDF expansion fails
-fn keyring_create_core(password: &str) -> messages::success::CommandResult<UsersEncryptionKeys> {
-    let session = Session::new();
+fn keyring_create_core(password: &str, config: Config) -> messages::success::CommandResult<UsersEncryptionKeys> {
+    let session = Session::new(config);
 
     // Check if key already exists
     if session.is_unlocked() {
@@ -157,8 +158,8 @@ fn keyring_create_core(password: &str) -> messages::success::CommandResult<Users
 /// - Key already exists (idempotent protection via keyring)
 /// - Passwords do not match
 /// - HKDF expansion fails
-pub fn keyring_create() -> messages::success::CommandResult<()> {
-    keyring_create_with_context("")
+pub fn keyring_create(config: Config) -> messages::success::CommandResult<()> {
+    keyring_create_with_context("", config)
 }
 
 #[cfg(all(test, feature = "keyring-tests"))]

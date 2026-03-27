@@ -88,7 +88,7 @@ impl CachedTransportKeys {
 /// fails (when enabled), or cache operations fail.
 pub async fn get_transport_key(client: &impl RouteExecutor) -> WalletResult<TransportKeyReceiver> {
     // Load config to get TTL and verification settings
-    let config = Config::load().map_err(|e| WalletError::StorageFailed(e.to_string()))?;
+    let mut config = Config::load().map_err(|e| WalletError::StorageFailed(e.to_string()))?;
     let ttl_minutes = config.enclave.transport_key_ttl_minutes;
     let verify_attestation = config.enclave.verify_attestation;
 
@@ -136,6 +136,15 @@ pub async fn get_transport_key(client: &impl RouteExecutor) -> WalletResult<Tran
         .await
         .map_err(|e| WalletError::StorageFailed(e.to_string()))?;
 
+    // Extract and save agent_id from response if not already configured
+    if config.agent_id.is_none() {
+        config.agent_id = Some(response.agent_id);
+        if let Err(e) = config.save() {
+            // Log config save failure but don't fail the operation
+            eprintln!("Warning: Failed to save agent_id to config: {e}");
+        }
+    }
+
     let ephemeral_bytes = STANDARD
         .decode(&response.ephemeral)
         .map_err(|e| WalletError::StorageFailed(e.to_string()))?;
@@ -166,7 +175,7 @@ pub async fn get_transport_key(client: &impl RouteExecutor) -> WalletResult<Tran
 
     if let Err(e) = save_transport_keys(&config_dir, &cached_keys) {
         // Log cache save failure but don't fail the operation
-        eprintln!("Warning: Failed to cache transport keys: {}", e);
+        eprintln!("Warning: Failed to cache transport keys: {e}");
     }
 
     Ok(transport_key)

@@ -115,6 +115,40 @@ fn generate_types_from_schemas() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+/// Check if a schema is an array type
+/// Returns true if schema is an array with items
+fn is_array_schema(schema: &serde_json::Value) -> bool {
+    let schema_type = schema.get("type").and_then(|t| t.as_str());
+    if schema_type != Some("array") {
+        return false;
+    }
+
+    schema.get("items").is_some()
+}
+
+/// Check if a schema has input (either properties for objects or items for arrays)
+fn has_input(schema: &serde_json::Value) -> bool {
+    // Check for object with properties
+    let has_properties = schema
+        .get("properties")
+        .and_then(|p| p.as_object())
+        .map(|p| !p.is_empty())
+        .unwrap_or(false);
+
+    if has_properties {
+        return true;
+    }
+
+    // Check for array with items
+    let is_array = schema
+        .get("type")
+        .and_then(|t| t.as_str())
+        .map(|t| t == "array")
+        .unwrap_or(false);
+
+    is_array && schema.get("items").is_some()
+}
+
 /// Generate Rust types from schema file using typify
 fn generate_rust_types(schema_file: &SchemaFile) -> Result<String, Box<dyn std::error::Error>> {
     let settings = TypeSpaceSettings::default();
@@ -157,24 +191,67 @@ fn generate_rust_types(schema_file: &SchemaFile) -> Result<String, Box<dyn std::
         RouteType::Mutation => quote::quote! { RouteType::Mutation },
         RouteType::Subscription => quote::quote! { RouteType::Subscription },
     };
-    let response_type = proc_macro2::Ident::new(&response_name, proc_macro2::Span::call_site());
 
-    // Check if input schema is empty (no properties) and use () if so
-    let has_input = schema_file
-        .input_schema
-        .get("properties")
-        .and_then(|p| p.as_object())
-        .map(|p| !p.is_empty())
-        .unwrap_or(false);
+    // Check if input schema is an array
+    let input_is_array = is_array_schema(&schema_file.input_schema);
+    let has_input = has_input(&schema_file.input_schema);
+
+    // Check if output schema is an array
+    let output_is_array = is_array_schema(&schema_file.output_schema);
+
+    // When output is an array, typify generates item type as {ResponseName}Item
+    let output_item_type_name = format!("{}Item", response_name);
 
     let route_impl = if has_input {
-        let request_type = proc_macro2::Ident::new(&request_name, proc_macro2::Span::call_site());
+        let request_type_ident = if input_is_array {
+            // For array inputs, typify generates item type as {RequestName}Item
+            let item_type_name = format!("{}Item", request_name);
+            let item_type = proc_macro2::Ident::new(&item_type_name, proc_macro2::Span::call_site());
+            quote::quote! { Vec<#item_type> }
+        } else {
+            let request_type = proc_macro2::Ident::new(&request_name, proc_macro2::Span::call_site());
+            quote::quote! { #request_type }
+        };
+
+        if output_is_array {
+            // Output is also an array
+            let item_type = proc_macro2::Ident::new(&output_item_type_name, proc_macro2::Span::call_site());
+            quote::quote! {
+                use crate::client::{Route, RouteType};
+                use std::marker::PhantomData;
+
+                /// Route metadata for this procedure
+                pub const ROUTE: Route<#request_type_ident, Vec<#item_type>> = Route {
+                    procedure: #procedure,
+                    route_type: #route_type_variant,
+                    input_schema: PhantomData,
+                    output_schema: PhantomData,
+                };
+            }
+        } else {
+            let response_type = proc_macro2::Ident::new(&response_name, proc_macro2::Span::call_site());
+            quote::quote! {
+                use crate::client::{Route, RouteType};
+                use std::marker::PhantomData;
+
+                /// Route metadata for this procedure
+                pub const ROUTE: Route<#request_type_ident, #response_type> = Route {
+                    procedure: #procedure,
+                    route_type: #route_type_variant,
+                    input_schema: PhantomData,
+                    output_schema: PhantomData,
+                };
+            }
+        }
+    } else if output_is_array {
+        // Output is an array, input is ()
+        let item_type = proc_macro2::Ident::new(&output_item_type_name, proc_macro2::Span::call_site());
         quote::quote! {
             use crate::client::{Route, RouteType};
             use std::marker::PhantomData;
 
             /// Route metadata for this procedure
-            pub const ROUTE: Route<#request_type, #response_type> = Route {
+            pub const ROUTE: Route<(), Vec<#item_type>> = Route {
                 procedure: #procedure,
                 route_type: #route_type_variant,
                 input_schema: PhantomData,
@@ -182,6 +259,7 @@ fn generate_rust_types(schema_file: &SchemaFile) -> Result<String, Box<dyn std::
             };
         }
     } else {
+        let response_type = proc_macro2::Ident::new(&response_name, proc_macro2::Span::call_site());
         quote::quote! {
             use crate::client::{Route, RouteType};
             use std::marker::PhantomData;

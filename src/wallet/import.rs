@@ -12,8 +12,7 @@ use tyche_enclave::{
     types::chain_type::ChainType,
 };
 
-use crate::client::IrisClient;
-use crate::client::upsert_encrypted_wallet;
+use crate::client::{IrisClient, upsert_wallet};
 use crate::session::crypto::UsersEncryptionKeys;
 
 use super::types::{Wallet, WalletError, WalletResult};
@@ -43,7 +42,7 @@ pub async fn import_wallet(
         ChainType::EVM => import_evm(private_key, user_key, name)?,
         ChainType::SVM => import_svm(private_key, user_key, name)?,
     };
-    upsert_encrypted_wallet(wallet, user_key, client).await
+    upsert_wallet(wallet, user_key, client).await
 }
 
 /// Import an EVM wallet from a hex-encoded private key.
@@ -85,7 +84,7 @@ fn import_evm(private_key_hex: &str, user_key: &UsersEncryptionKeys, name: Strin
     let address = format!("0x{}", hex::encode(&hash[hash.len() - 20..]));
 
     // Encrypt private key
-    let encrypted_private_key = WalletKey::new(ChainType::EVM, address.clone(), private_key_bytes.to_vec())
+    let encrypted_private_key = WalletKey::new(ChainType::EVM, address.clone(), private_key_bytes)
         .seal(&user_key.storage)
         .map_err(|e| WalletError::StorageFailed(e.to_string()))?;
 
@@ -122,7 +121,7 @@ fn import_svm(private_key_bs58: &str, user_key: &UsersEncryptionKeys, name: Stri
     let address = bs58::encode(ed25519_dalek::VerifyingKey::from(&signing_key).as_bytes()).into_string();
 
     // Encrypt the seed
-    let encrypted_private_key = WalletKey::new(ChainType::SVM, address.clone(), signing_key.to_bytes().to_vec())
+    let encrypted_private_key = WalletKey::new(ChainType::SVM, address.clone(), signing_key.to_bytes())
         .seal(&user_key.storage)
         .map_err(|e| WalletError::StorageFailed(e.to_string()))?;
 

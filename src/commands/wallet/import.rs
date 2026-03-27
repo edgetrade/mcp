@@ -44,13 +44,10 @@ pub async fn wallet_import(
     chain: ChainType,
     name: Option<String>,
     key_file: Option<String>,
+    session: &Session,
     client: &crate::client::IrisClient,
 ) -> messages::success::CommandResult<()> {
-    // Step 1: Ensure session is ready
-    crate::commands::key::session_manager::ensure_session_ready("wallet")?;
-
     // Step 2: Get the UEK from session
-    let session = Session::new();
     let uek = session
         .get_user_encryption_key()
         .map_err(|e| messages::error::CommandError::Session(e.to_string()))?

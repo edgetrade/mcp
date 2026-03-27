@@ -8,6 +8,7 @@ use core::f64;
 
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
+use erato::models::ChainId;
 use tyche_enclave::envelopes::storage::WalletKey;
 use tyche_enclave::types::chain_type::ChainType;
 use uuid::Uuid;
@@ -16,8 +17,10 @@ use tyche_enclave::envelopes::storage::StorageEnvelope;
 use tyche_enclave::envelopes::transport::{ExecutionPayload, SealedIntent, TransportEnvelope, TransportEnvelopeKey};
 
 use crate::client::{IrisClient, proof_game};
+use crate::config::Config;
 use crate::generated::routes::requests::agent_proof_game::ProofGameRequestOrdersItem;
 use crate::messages;
+use crate::session::Session;
 use crate::session::crypto::UsersEncryptionKeys;
 use crate::session::transport::get_transport_key;
 
@@ -45,20 +48,41 @@ use super::{
 pub async fn play_game(
     replay: bool,
     user_key: &UsersEncryptionKeys,
+    session: &Session,
     client: &IrisClient,
 ) -> messages::success::CommandResult<()> {
     let session_id = generate_session_id();
     println!("Session ID: {}\n", session_id);
+
+    let mut aid = session
+        .get_config()
+        .map_err(|e| messages::error::CommandError::Session(e.to_string()))?
+        .clone()
+        .agent_id;
+
+    if aid.is_none() {
+        get_transport_key(client).await?;
+        let config = Config::load().map_err(|e| messages::error::CommandError::Session(e.to_string()))?;
+        let agent_id = config.agent_id;
+        if agent_id.is_none() {
+            return Err(messages::error::CommandError::InvalidInput(
+                "Agent ID not found. Please set the agent ID in the session config.".to_string(),
+            ));
+        };
+        aid = Some(agent_id.unwrap());
+    }
+
+    let agent_id = aid.unwrap();
 
     // Step 1: Get or create game wallet
     let wallet = super::game_state::get_or_create_wallet(!replay)?;
     println!("Using game wallet: {}\n", wallet.address);
 
     // Step 2: Get or create sealed intents
-    let intents = if replay {
+    let mut intents = if replay {
         load_existing_intents(&wallet)?
     } else {
-        create_new_intents(&wallet, user_key, client).await?
+        create_new_intents(&wallet, &agent_id, user_key, client).await?
     };
 
     if intents.is_empty() {
@@ -71,23 +95,36 @@ pub async fn play_game(
     let test_value = prompt_number("Give ANY number (this will be tested against the constraints): ")?;
     println!("\nTest value: {}\n", test_value);
 
+    for intent in intents.iter_mut() {
+        intent.value = test_value as f64;
+    }
+
     // Step 4: Prepare intents for prove game
     let prove_intents: Vec<ProofGameRequestOrdersItem> = intents.into_iter().take(3).collect();
 
     // Step 5: Call proof_game
     println!("Sending {} intents to the enclave...\n", prove_intents.len());
 
-    let encrypted_wallet_blob = WalletKey::new(
-        ChainType::EVM,
-        wallet.address.clone(),
-        wallet.private_key.clone().into_bytes().to_vec(),
-    )
-    .seal(&user_key.storage)
-    .map_err(|e| messages::error::CommandError::Wallet(e.to_string()))?;
+    let private_key_bytes: [u8; 32] = base64::engine::general_purpose::STANDARD
+        .decode(wallet.private_key.clone())
+        .map_err(|e| messages::error::CommandError::Wallet(e.to_string()))?
+        .try_into()
+        .unwrap();
 
-    let response = proof_game(wallet.address.clone(), encrypted_wallet_blob, prove_intents, client)
-        .await
+    let encrypted_private_key = WalletKey::new(ChainType::EVM, wallet.address.clone(), private_key_bytes)
+        .seal(&user_key.storage)
         .map_err(|e| messages::error::CommandError::Wallet(e.to_string()))?;
+
+    let response = proof_game(
+        wallet.address.clone(),
+        encrypted_private_key,
+        test_value.to_be_bytes().to_vec(),
+        prove_intents,
+        user_key,
+        client,
+    )
+    .await
+    .map_err(|e| messages::error::CommandError::Wallet(e.to_string()))?;
 
     // Step 6: Display results
     display_results(&response, &wallet, test_value)?;
@@ -106,6 +143,7 @@ pub async fn play_game(
 /// Create new sealed intents for Game 1.
 async fn create_new_intents(
     wallet: &GameWallet,
+    agent_id: &Uuid,
     user_key: &UsersEncryptionKeys,
     client: &IrisClient,
 ) -> messages::success::CommandResult<Vec<ProofGameRequestOrdersItem>> {
@@ -134,8 +172,8 @@ async fn create_new_intents(
         // Create the sealed intent
         let sealed_intent = SealedIntent {
             user_id: None,
-            agent_id: None,
-            chain_id: "1".to_string(),
+            agent_id: Some(agent_id.to_string()),
+            chain_id: ChainId::ETHEREUM.to_string(),
             wallet_address: wallet.address.clone(),
             value: constraint.to_string(),
         };
@@ -154,8 +192,7 @@ async fn create_new_intents(
         // Create the ProofGameRequestOrdersItem for the API
         let execute_intent = ProofGameRequestOrdersItem {
             order_id,
-            data: hex::encode([]), // Empty hex string for data
-            value: *constraint,
+            value: 0 as f64, // this is just a placeholder. we overwrite later when we know
             sealed_envelope: STANDARD.encode(&envelope),
         };
 
@@ -184,7 +221,6 @@ fn load_existing_intents(_wallet: &GameWallet) -> messages::success::CommandResu
 
         let execute_intent = ProofGameRequestOrdersItem {
             order_id,
-            data: hex::encode([]), // Empty hex string
             value: stored
                 .constraint_value
                 .clone()

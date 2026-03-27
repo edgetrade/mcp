@@ -6,3 +6,6 @@ pub mod agent_get_transport_key;
 pub mod agent_list_encrypted_wallets;
 pub mod agent_proof_game;
 pub mod agent_rotate_user_encryption_key;
+pub mod intelligence_screen_tokens;
+pub mod intelligence_search_swaps;
+pub mod intelligence_search_tokens;

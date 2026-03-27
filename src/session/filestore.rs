@@ -4,11 +4,14 @@
 //! authentication flow. No keyring - the session is secured by the
 //! password-derived encryption.
 
+use std::sync::Arc;
+
 use base64::Engine;
 use ed25519_dalek::SigningKey;
 
-use crate::commands::key::filestore::storage::{
-    StorageError, delete_session_file, load_session_file, store_session_file,
+use crate::{
+    commands::key::filestore::storage::{StorageError, delete_session_file, load_session_file, store_session_file},
+    config::Config,
 };
 
 use super::crypto::UsersEncryptionKeys;
@@ -38,12 +41,17 @@ impl From<StorageError> for SessionError {
 #[derive(Debug)]
 pub struct Session {
     _private: (),
+    /// Config
+    config: Arc<Config>,
 }
 
 impl Session {
     /// Create a new session manager.
-    pub fn new() -> Self {
-        Self { _private: () }
+    pub fn new(config: Config) -> Self {
+        Self {
+            _private: (),
+            config: Arc::new(config),
+        }
     }
 
     /// Store the user encryption key to the session file.
@@ -98,11 +106,16 @@ impl Session {
             None => Ok(None),
         }
     }
+
+    /// Get the config from the session file.
+    pub fn get_config(&self) -> Result<&Config, SessionError> {
+        Ok(&self.config)
+    }
 }
 
 impl Default for Session {
     fn default() -> Self {
-        Self::new()
+        Self::new(Config::default())
     }
 }
 
@@ -126,7 +139,7 @@ mod tests {
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         cleanup_session();
 
-        let session = Session::new();
+        let session = Session::new(Config::default());
         assert!(!session.is_unlocked(), "Fresh session should be locked");
 
         let uek = UsersEncryptionKeys::new(SigningKey::from_bytes(&[1u8; 32]), [1u8; 32], None);
@@ -151,7 +164,7 @@ mod tests {
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         cleanup_session();
 
-        let session = Session::new();
+        let session = Session::new(Config::default());
         let uek = UsersEncryptionKeys::new(SigningKey::from_bytes(&[2u8; 32]), [2u8; 32], None);
         session.unlock(&uek).unwrap();
         assert!(session.is_unlocked(), "Session should be unlocked");
@@ -173,7 +186,7 @@ mod tests {
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         cleanup_session();
 
-        let session = Session::new();
+        let session = Session::new(Config::default());
         assert!(!session.is_unlocked(), "Fresh session should be locked");
 
         let result = session.get_user_encryption_key().unwrap();
@@ -192,7 +205,7 @@ mod tests {
         // Store invalid data (not valid base64)
         store_session_file(b"not-valid-base64!!!").unwrap();
 
-        let session = Session::new();
+        let session = Session::new(Config::default());
         let result = session.get_user_encryption_key();
         assert!(
             matches!(result, Err(SessionError::Corrupted)),
@@ -213,7 +226,7 @@ mod tests {
         let short = base64::engine::general_purpose::STANDARD.encode(&[0u8; 16]);
         store_session_file(short.as_bytes()).unwrap();
 
-        let session = Session::new();
+        let session = Session::new(Config::default());
         let result = session.get_user_encryption_key();
         assert!(
             matches!(result, Err(SessionError::Corrupted)),
@@ -230,7 +243,7 @@ mod tests {
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         cleanup_session();
 
-        let session = Session::new();
+        let session = Session::new(Config::default());
         assert!(!session.is_unlocked(), "Fresh session should be locked");
 
         // Lock when already locked should succeed (idempotent)

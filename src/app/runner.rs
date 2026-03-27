@@ -12,10 +12,13 @@ use colored_json::to_colored_json_auto;
 use tokio::sync::RwLock;
 
 use crate::app::client::parse_api_credentials;
-use crate::app::handler::{handle_key, handle_ping, handle_skill, handle_version, handle_wallet, serve};
+use crate::app::handler::{
+    KeyCommandArgs, handle_key, handle_ping, handle_skill, handle_version, handle_wallet, serve,
+};
 use crate::app::{KeyCreateFn, KeyDeleteFn, KeyLockFn, KeyUnlockFn, KeyUpdateFn};
 use crate::client::new_client;
 use crate::commands::serve::mcp::EdgeServer;
+use crate::config::Config;
 use crate::manifest::{ManifestManager, McpManifest};
 use crate::messages;
 use crate::session::crypto::UsersEncryptionKeys;
@@ -43,12 +46,12 @@ impl App {
     /// 1. Probes the OS keyring to check availability
     /// 2. Uses `KeyringSession` if the keyring is available
     /// 3. Falls back to `FileStoreSession` with a warning if keyring fails
-    pub fn new() -> Self {
+    pub fn new(config: Config) -> Self {
         let session = if keyring_available() {
-            Session::Keyring(crate::session::KeyringSession::new())
+            Session::Keyring(crate::session::KeyringSession::new(config))
         } else {
             messages::warning::keyring_unavailable();
-            Session::File(crate::session::FileStoreSession::new())
+            Session::File(crate::session::FileStoreSession::new(config))
         };
         Self {
             session,
@@ -60,17 +63,17 @@ impl App {
     ///
     /// # Panics
     /// Panics if the keyring is not available.
-    pub fn new_with_keyring() -> Self {
+    pub fn new_with_keyring(config: Config) -> Self {
         Self {
-            session: Session::Keyring(crate::session::KeyringSession::new()),
+            session: Session::Keyring(crate::session::KeyringSession::new(config)),
             manifest_manager: None,
         }
     }
 
     /// Create a new App explicitly using the file storage backend.
-    pub fn new_with_file() -> Self {
+    pub fn new_with_file(config: Config) -> Self {
         Self {
-            session: Session::File(crate::session::FileStoreSession::new()),
+            session: Session::File(crate::session::FileStoreSession::new(config)),
             manifest_manager: None,
         }
     }
@@ -118,7 +121,7 @@ impl App {
 
 impl Default for App {
     fn default() -> Self {
-        Self::new()
+        Self::new(Config::default())
     }
 }
 
@@ -134,8 +137,9 @@ pub async fn run(
     key_delete: KeyDeleteFn,
 ) {
     // Create the App instance with session management
-    let mut app = App::new();
     let cli = Cli::parse();
+    let config = Config::load().unwrap_or_default();
+    let mut app = App::new(config.clone());
 
     // ------------------------------------------------------------------------
     //
@@ -174,13 +178,16 @@ pub async fn run(
 
     if let Some(Commands::Key { command }) = &cli.command {
         if let Err(code) = handle_key(
-            command,
             key_create,
             key_unlock,
             key_lock,
             key_update,
             key_delete,
-            &api_client,
+            KeyCommandArgs {
+                command: Some(command.clone().unwrap()),
+                config: config.clone(),
+                client: api_client.clone(),
+            },
         )
         .await
         {
@@ -190,7 +197,7 @@ pub async fn run(
     }
 
     if let Some(Commands::Wallet { command }) = &cli.command {
-        if let Err(code) = handle_wallet(command, &api_client).await {
+        if let Err(code) = handle_wallet(command, &app.session, &api_client).await {
             process::exit(code);
         }
         return;

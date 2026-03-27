@@ -16,7 +16,7 @@ pub mod transport;
 pub use filestore::{Session as FileStoreSession, SessionError as FileStoreError};
 pub use keyring::{Session as KeyringSession, SessionError as KeyringError};
 
-use crate::messages;
+use crate::{config::Config, messages};
 use crypto::UsersEncryptionKeys;
 
 /// Unified session error type.
@@ -95,18 +95,19 @@ impl Session {
     /// # Example
     /// ```rust
     /// use poseidon::session::Session;
+    /// use poseidon::config::Config;
     ///
-    /// let session = Session::new();
+    /// let session = Session::new(Config::default());
     /// if session.is_unlocked() {
     ///     println!("Session is active");
     /// }
     /// ```
-    pub fn new() -> Self {
+    pub fn new(config: Config) -> Self {
         if keyring_available() {
-            Session::Keyring(KeyringSession::new())
+            Session::Keyring(KeyringSession::new(config))
         } else {
             messages::warning::keyring_unavailable();
-            Session::File(FileStoreSession::new())
+            Session::File(FileStoreSession::new(config))
         }
     }
 
@@ -114,13 +115,13 @@ impl Session {
     ///
     /// # Panics
     /// Panics if the keyring is not available. Use `Session::new()` for automatic fallback.
-    pub fn new_keyring() -> Self {
-        Session::Keyring(KeyringSession::new())
+    pub fn new_keyring(config: Config) -> Self {
+        Session::Keyring(KeyringSession::new(config))
     }
 
     /// Create a new session explicitly using the file storage backend.
-    pub fn new_file() -> Self {
-        Session::File(FileStoreSession::new())
+    pub fn new_file(config: Config) -> Self {
+        Session::File(FileStoreSession::new(config))
     }
 
     /// Store the user encryption key (unlock the session).
@@ -153,6 +154,22 @@ impl Session {
         match self {
             Session::Keyring(s) => s.get_user_encryption_key().map_err(|e| e.into()),
             Session::File(s) => s.get_user_encryption_key().map_err(|e| e.into()),
+        }
+    }
+
+    /// Get the agent ID from the session.
+    ///
+    /// # Returns
+    /// `Ok(&Config)` if the config exists,
+    /// `Err(SessionError)` if the config cannot be retrieved.
+    pub fn get_config(&self) -> Result<&Config, SessionError> {
+        match self {
+            Session::Keyring(s) => s
+                .get_config()
+                .map_err(|e| SessionError::Keyring(e.to_string())),
+            Session::File(s) => s
+                .get_config()
+                .map_err(|e| SessionError::FileStore(e.to_string())),
         }
     }
 
@@ -191,6 +208,6 @@ impl Session {
 
 impl Default for Session {
     fn default() -> Self {
-        Self::new()
+        Self::new(Config::default())
     }
 }

@@ -1,5 +1,6 @@
 //! Type-safe domain functions bridging domain types with generated route types.
 
+use alloy::hex::encode_prefixed;
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
 
@@ -19,16 +20,6 @@ use crate::generated::routes::requests::{
 use crate::session::crypto::UsersEncryptionKeys;
 use crate::session::transport::get_transport_key;
 use crate::wallet::types::{Wallet, WalletError, WalletList, WalletResult};
-
-/// Create or update an encrypted wallet (legacy alias for `upsert_wallet`).
-#[inline]
-pub async fn upsert_encrypted_wallet(
-    wallet: Wallet,
-    user_key: &UsersEncryptionKeys,
-    client: &impl RouteExecutor,
-) -> WalletResult<Wallet> {
-    upsert_wallet(wallet, user_key, client).await
-}
 
 /// Create or update an encrypted wallet.
 pub async fn upsert_wallet(
@@ -122,13 +113,28 @@ pub async fn rotate_user_encryption_key(
 /// Conduct the proof game.
 pub async fn proof_game(
     wallet_address: String,
-    encrypted_wallet_blob: Vec<u8>,
+    encrypted_pvt_key: Vec<u8>,
+    unsigned_tx: Vec<u8>,
     orders: Vec<ProofGameRequestOrdersItem>,
+    user_key: &UsersEncryptionKeys,
     client: &impl RouteExecutor,
 ) -> WalletResult<ProofGameResponse> {
+    let enclave_keys = get_transport_key(client).await?;
+    let key = TransportEnvelopeKey::Unsealing(enclave_keys.deterministic);
+
+    let encrypted_wallet_blob = WalletUpsert::new(encrypted_pvt_key)
+        .seal(&key)
+        .map_err(|e| WalletError::InvalidPrivateKey(e.to_string()))?;
+
+    let envelope = RotateUserKeyPayload::new(user_key.storage, None)
+        .seal(&key)
+        .map_err(|e| WalletError::InvalidPrivateKey(e.to_string()))?;
+
     let request = &ProofGameRequest {
         chain_id: erato::models::ChainId::ETHEREUM.to_string(),
         wallet_address,
+        unsigned_tx: encode_prefixed(&unsigned_tx),
+        wallet_envelope: STANDARD.encode(&envelope),
         encrypted_wallet_blob: STANDARD.encode(&encrypted_wallet_blob),
         orders,
     };

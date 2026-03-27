@@ -13,6 +13,7 @@ use crate::commands::key::filestore::storage::{
     default_blind_user_key_path, default_salt_path, default_storage_dir, ensure_storage_dir, load_blind_user_key,
     load_salt, store_blind_user_key, store_salt,
 };
+use crate::config::Config;
 use crate::messages;
 use crate::session::Session;
 use std::fs;
@@ -36,8 +37,8 @@ use std::fs;
 /// - Current password is incorrect
 /// - New password confirmation fails
 /// - Storage operations fail
-pub async fn key_update(client: &IrisClient) -> messages::success::CommandResult<()> {
-    let session = Session::new();
+pub async fn key_update(config: Config, client: &IrisClient) -> messages::success::CommandResult<()> {
+    let session = Session::new(config);
 
     // Check if session is unlocked and get current UEK
     let current_uek = session
