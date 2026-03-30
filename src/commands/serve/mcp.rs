@@ -17,6 +17,7 @@ use tokio::sync::{Mutex, RwLock};
 use crate::client::IrisClient;
 use crate::commands::subscribe::alerts::{AlertRegistry, new_alert_registry};
 use crate::commands::subscribe::{SubscriptionManager, WebhookDispatcher};
+use crate::error::PoseidonError;
 use crate::manifest::{McpManifest, inject_local_agent_actions, inject_local_resources};
 use crate::messages;
 
@@ -342,13 +343,19 @@ impl EdgeServer {
         })
     }
 
-    pub async fn serve_stdio(self) -> Result<(), Box<dyn std::error::Error>> {
-        let service = self.serve(stdio()).await?;
-        service.waiting().await?;
+    pub async fn serve_stdio(self) -> crate::error::Result<()> {
+        let service = self
+            .serve(stdio())
+            .await
+            .map_err(|e| PoseidonError::Command(format!("MCP serve error: {}", e)))?;
+        service
+            .waiting()
+            .await
+            .map_err(|e| PoseidonError::Command(format!("MCP service error: {}", e)))?;
         Ok(())
     }
 
-    pub async fn serve_http(self, host: &str, port: &u16, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn serve_http(self, host: &str, port: &u16, path: &str) -> crate::error::Result<()> {
         use rmcp::transport::streamable_http_server::session::local::LocalSessionManager;
         use rmcp::transport::streamable_http_server::{StreamableHttpServerConfig, StreamableHttpService};
 
@@ -368,8 +375,12 @@ impl EdgeServer {
         );
         let router = axum::Router::new().nest_service(&path, service);
 
-        let listener = tokio::net::TcpListener::bind(&addr).await?;
-        axum::serve(listener, router).await?;
+        let listener = tokio::net::TcpListener::bind(&addr)
+            .await
+            .map_err(PoseidonError::Io)?;
+        axum::serve(listener, router)
+            .await
+            .map_err(PoseidonError::Io)?;
         Ok(())
     }
 }

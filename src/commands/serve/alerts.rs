@@ -8,11 +8,10 @@ use serde_json::Value;
 use tokio::sync::{Mutex, RwLock};
 
 use crate::client::IrisClient;
-use crate::commands::subscribe::{SubscriptionManager, WebhookDispatcher};
-use crate::messages;
-
 use crate::commands::subscribe::alerts::{AlertDelivery, AlertRegistration, AlertRegistry, next_alert_id};
+use crate::commands::subscribe::{SubscriptionManager, WebhookDispatcher};
 use crate::manifest::McpManifest;
+use crate::messages;
 
 /// Maps procedure → subscription id for active SSE subscriptions.
 pub type ActiveSubscriptions = Arc<Mutex<std::collections::HashMap<String, u32>>>;

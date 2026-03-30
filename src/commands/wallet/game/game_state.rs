@@ -10,8 +10,14 @@ use std::path::PathBuf;
 
 use base64::Engine;
 use serde::{Deserialize, Serialize};
+use tyche_enclave::envelopes::transport::TransportEnvelopeKey;
+use uuid::Uuid;
 
+use crate::client::IrisClient;
 use crate::config::Config;
+use crate::session::Session;
+use crate::session::crypto::UsersEncryptionKeys;
+use crate::session::transport::get_transport_key;
 use crate::wallet::types::WalletError;
 
 /// Default game state file name.
@@ -98,6 +104,8 @@ pub enum GameStateError {
     WalletNotFound,
     #[error("Invalid key")]
     InvalidKey,
+    #[error("Cannot find agent ID")]
+    AgentIdNotFound,
 }
 
 impl From<WalletError> for GameStateError {
@@ -124,6 +132,62 @@ impl From<toml::ser::Error> for GameStateError {
     }
 }
 
+/// Generate a unique session ID for the prove game.
+pub fn generate_session_id() -> String {
+    use uuid::Uuid;
+    format!(
+        "prove-game-{}",
+        Uuid::new_v4()
+            .to_string()
+            .split('-')
+            .next()
+            .unwrap_or("session")
+    )
+}
+
+/// Get the game info from the session.
+///
+/// # Arguments
+/// * `session` - The session to get the game info from.
+/// * `client` - The Iris client to get the transport key from.
+///
+/// # Returns
+/// The agent ID and user encryption key.
+pub async fn get_game_info(
+    session: &Session,
+    client: &IrisClient,
+) -> Result<(Uuid, UsersEncryptionKeys, TransportEnvelopeKey), GameStateError> {
+    // Get transport keys for sealing
+    let enclave_keys = get_transport_key(client)
+        .await
+        .map_err(|e| GameStateError::Io(e.to_string()))?;
+    let transport_key = TransportEnvelopeKey::Unsealing(enclave_keys.deterministic);
+
+    let mut aid = session
+        .get_config()
+        .map_err(|e| GameStateError::Io(e.to_string()))?
+        .clone()
+        .agent_id;
+
+    if aid.is_none() {
+        get_transport_key(client).await?;
+        let config = Config::load(None).map_err(|e| GameStateError::Io(e.to_string()))?;
+        let agent_id = config.agent_id;
+        if agent_id.is_none() {
+            return Err(GameStateError::AgentIdNotFound);
+        };
+        aid = Some(agent_id.unwrap());
+    }
+
+    let agent_id = aid.unwrap();
+
+    let user_key = session
+        .get_user_encryption_key()
+        .map_err(|e| GameStateError::Io(e.to_string()))?
+        .ok_or_else(|| GameStateError::Io("Session unavailable".to_string()))?;
+    Ok((agent_id, user_key, transport_key))
+}
+
 /// Get the path to the game state file.
 ///
 /// Returns ~/.config/edge/game.toml (or platform equivalent).
@@ -134,16 +198,6 @@ pub fn game_state_path() -> Result<PathBuf, GameStateError> {
         .ok_or_else(|| GameStateError::Io("No config dir".to_string()))?
         .to_path_buf();
     Ok(config_dir.join(GAME_STATE_FILE))
-}
-
-/// Clear the game state file (useful for tests).
-#[allow(dead_code)]
-pub fn clear_game_state() -> Result<(), GameStateError> {
-    let path = game_state_path()?;
-    if path.exists() {
-        fs::remove_file(&path)?;
-    }
-    Ok(())
 }
 
 /// Load the game state from disk.
@@ -309,53 +363,6 @@ pub fn store_game_result(result: GameResultEntry) -> Result<(), GameStateError> 
 
     save_game_state(&state)?;
     Ok(())
-}
-
-/// Get all sealed intents.
-pub fn get_sealed_intents() -> Result<Vec<SealedIntentEntry>, GameStateError> {
-    let state = load_game_state()?;
-    Ok(state.sealed_intents)
-}
-
-/// Get a specific sealed intent by ID.
-pub fn get_sealed_intent(id: &str) -> Result<Option<SealedIntentEntry>, GameStateError> {
-    let state = load_game_state()?;
-    Ok(state.sealed_intents.into_iter().find(|i| i.id == id))
-}
-
-/// Get derived key for a password.
-pub fn get_derived_key(password_id: &str) -> Result<Option<[u8; 32]>, GameStateError> {
-    let state = load_game_state()?;
-
-    match state.derived_keys.get(password_id) {
-        Some(key_b64) => {
-            let key_bytes = base64::engine::general_purpose::STANDARD
-                .decode(key_b64)
-                .map_err(|_| GameStateError::InvalidKey)?;
-            if key_bytes.len() != 32 {
-                return Err(GameStateError::InvalidKey);
-            }
-            let mut key = [0u8; 32];
-            key.copy_from_slice(&key_bytes);
-            Ok(Some(key))
-        }
-        None => Ok(None),
-    }
-}
-
-/// Get encrypted blob for a password.
-pub fn get_encrypted_blob(password_id: &str) -> Result<Option<Vec<u8>>, GameStateError> {
-    let state = load_game_state()?;
-
-    match state.encrypted_blobs.get(password_id) {
-        Some(blob_b64) => {
-            let blob = base64::engine::general_purpose::STANDARD
-                .decode(blob_b64)
-                .map_err(|_| GameStateError::InvalidKey)?;
-            Ok(Some(blob))
-        }
-        None => Ok(None),
-    }
 }
 
 /// Get the effective game state path with thread-local test override support.

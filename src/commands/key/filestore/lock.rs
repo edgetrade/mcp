@@ -3,6 +3,7 @@
 //! Implements session lock by clearing session keys from the OS keyring.
 
 use crate::config::Config;
+use crate::error::PoseidonError;
 use crate::messages;
 use crate::session::Session;
 
@@ -18,13 +19,13 @@ use crate::session::Session;
 /// # Errors
 /// Returns an error if:
 /// - The session cannot be accessed (should not happen in normal operation)
-pub fn key_lock(config: Config) -> messages::success::CommandResult<()> {
+pub fn key_lock(config: Config) -> crate::error::Result<()> {
     let session = Session::new(config);
 
     if session.is_unlocked() {
         session
             .lock()
-            .map_err(|e| messages::error::CommandError::Storage(e.to_string()))?;
+            .map_err(|e| PoseidonError::Storage(e.to_string()))?;
         messages::success::session_locked();
     } else {
         messages::success::session_already_locked();

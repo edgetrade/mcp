@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use tyche_enclave::shared::attestation::TransportKeyReceiver;
 
 use crate::client::RouteExecutor;
-use crate::config::Config;
+use crate::config::{Config, default_config_path_buf};
 use crate::generated::routes::requests::agent_get_transport_key;
 use crate::wallet::types::{WalletError, WalletResult};
 
@@ -87,14 +87,14 @@ impl CachedTransportKeys {
 /// Returns `WalletError` if fetching from API fails, attestation verification
 /// fails (when enabled), or cache operations fail.
 pub async fn get_transport_key(client: &impl RouteExecutor) -> WalletResult<TransportKeyReceiver> {
-    // Load config to get TTL and verification settings
-    let mut config = Config::load().map_err(|e| WalletError::StorageFailed(e.to_string()))?;
+    // Load config to get TTL and verification settings from default location
+    let mut config = Config::load(None).map_err(|e| WalletError::StorageFailed(e.to_string()))?;
     let ttl_minutes = config.enclave.transport_key_ttl_minutes;
     let verify_attestation = config.enclave.verify_attestation;
 
     // Get config directory for cache storage
-    let config_dir = Config::config_path()
-        .map_err(|e| WalletError::StorageFailed(e.to_string()))?
+    let config_dir = default_config_path_buf()
+        .ok_or_else(|| WalletError::StorageFailed("No config dir".to_string()))?
         .parent()
         .ok_or_else(|| WalletError::StorageFailed("No config dir".to_string()))?
         .to_path_buf();
@@ -104,8 +104,6 @@ pub async fn get_transport_key(client: &impl RouteExecutor) -> WalletResult<Tran
         && let Some(timestamp) = cached.timestamp()
         && is_cache_fresh(timestamp, ttl_minutes)
     {
-        println!("Cache is fresh, decoding and returning");
-
         // Cache is fresh, decode and return
         let ephemeral_bytes = STANDARD
             .decode(&cached.ephemeral)

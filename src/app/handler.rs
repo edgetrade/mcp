@@ -1,33 +1,33 @@
-use std::process;
-
 use clap::CommandFactory;
 use tyche_enclave::types::chain_type::ChainType;
 
 use crate::app::cli::Transport;
 use crate::commands;
+use crate::commands::key::filestore::{
+    key_create as filestore_create, key_delete as filestore_delete, key_lock as filestore_lock,
+    key_unlock as filestore_unlock, key_update as filestore_update,
+};
+use crate::commands::key::keyring::{keyring_create, keyring_delete, keyring_lock, keyring_unlock, keyring_update};
 use crate::commands::serve::mcp::EdgeServer;
 use crate::config::Config;
+use crate::error::PoseidonError;
 use crate::manifest::McpManifest;
 use crate::messages;
 use crate::session::Session;
 use crate::utils::urls::EDGE_MCP_URL;
 
 use super::cli::{Cli, KeyCommand, ServeArgs, SkillCommand, WalletCommand};
-use super::{KeyCreateFn, KeyDeleteFn, KeyLockFn, KeyUnlockFn, KeyUpdateFn};
 
-pub async fn serve(args: &ServeArgs, server: EdgeServer) -> Result<(), i32> {
+pub async fn serve(args: &ServeArgs, server: EdgeServer) -> Result<(), PoseidonError> {
     match args.transport {
         Transport::Http => server
             .serve_http(&args.host, &args.port, &args.path)
             .await
-            .map_err(|e| {
-                messages::error::mcp_server_error(&e.to_string());
-                1
-            }),
-        Transport::Stdio => server.serve_stdio().await.map_err(|e| {
-            messages::error::mcp_server_error(&e.to_string());
-            1
-        }),
+            .map_err(|e| PoseidonError::Command(format!("MCP server error: {}", e))),
+        Transport::Stdio => server
+            .serve_stdio()
+            .await
+            .map_err(|e| PoseidonError::Command(format!("MCP server error: {}", e))),
     }
 }
 
@@ -35,37 +35,31 @@ pub struct KeyCommandArgs {
     pub command: Option<KeyCommand>,
     pub config: Config,
     pub client: crate::client::IrisClient,
+    pub session: Session,
 }
 
-pub async fn handle_key(
-    key_create: KeyCreateFn,
-    key_unlock: KeyUnlockFn,
-    key_lock: KeyLockFn,
-    key_update: KeyUpdateFn,
-    key_delete: KeyDeleteFn,
-    args: KeyCommandArgs,
-) -> Result<(), i32> {
+pub async fn handle_key(args: KeyCommandArgs) -> Result<(), PoseidonError> {
     match args.command {
-        Some(KeyCommand::Create) => key_create(args.config).map_err(|e| {
-            messages::error::key_command_error("create", &e.to_string());
-            1
-        }),
-        Some(KeyCommand::Unlock) => key_unlock(args.config).map_err(|e| {
-            messages::error::key_command_error("unlock", &e.to_string());
-            1
-        }),
-        Some(KeyCommand::Lock) => key_lock(args.config).map_err(|e| {
-            messages::error::key_command_error("lock", &e.to_string());
-            1
-        }),
-        Some(KeyCommand::Update) => key_update(args.config, &args.client).await.map_err(|e| {
-            messages::error::key_command_error("update", &e.to_string());
-            1
-        }),
-        Some(KeyCommand::Delete) => key_delete(args.config).map_err(|e| {
-            messages::error::key_command_error("delete", &e.to_string());
-            1
-        }),
+        Some(KeyCommand::Create) => match args.session {
+            Session::Keyring(_) => keyring_create(args.config),
+            Session::File(_) => filestore_create(),
+        },
+        Some(KeyCommand::Unlock) => match args.session {
+            Session::Keyring(_) => keyring_unlock(),
+            Session::File(_) => filestore_unlock(args.config),
+        },
+        Some(KeyCommand::Lock) => match args.session {
+            Session::Keyring(_) => keyring_lock(),
+            Session::File(_) => filestore_lock(args.config),
+        },
+        Some(KeyCommand::Update) => match args.session {
+            Session::Keyring(_) => keyring_update(args.config, &args.client).await,
+            Session::File(_) => filestore_update(args.config, &args.client).await,
+        },
+        Some(KeyCommand::Delete) => match args.session {
+            Session::Keyring(_) => keyring_delete(),
+            Session::File(_) => filestore_delete(),
+        },
         None => {
             // Print help when no subcommand is provided
             let cmd = Cli::command();
@@ -80,52 +74,25 @@ pub async fn handle_wallet(
     command: &Option<WalletCommand>,
     session: &Session,
     client: &crate::client::IrisClient,
-) -> Result<(), i32> {
+) -> Result<(), PoseidonError> {
     match command {
         Some(WalletCommand::Create { chain_type, name }) => {
-            let chain_type = ChainType::parse(chain_type).map_err(|_| {
-                messages::error::invalid_chain_type();
-                1
-            })?;
-            commands::wallet::wallet_create(chain_type, name.clone(), session, client)
-                .await
-                .map_err(|e| {
-                    messages::error::wallet_command_error("create", &e.to_string());
-                    1
-                })
+            let chain_type = ChainType::parse(chain_type)
+                .map_err(|_| PoseidonError::InvalidInput("Invalid chain type".to_string()))?;
+            commands::wallet::wallet_create(chain_type, name.clone(), session, client).await
         }
         Some(WalletCommand::Import {
             chain_type,
             name,
             key_file,
         }) => {
-            let chain_type = ChainType::parse(chain_type).map_err(|_| {
-                messages::error::invalid_chain_type();
-                1
-            })?;
-            commands::wallet::wallet_import(chain_type, name.clone(), key_file.clone(), session, client)
-                .await
-                .map_err(|e| {
-                    messages::error::wallet_command_error("import", &e.to_string());
-                    1
-                })
+            let chain_type = ChainType::parse(chain_type)
+                .map_err(|_| PoseidonError::InvalidInput("Invalid chain type".to_string()))?;
+            commands::wallet::wallet_import(chain_type, name.clone(), key_file.clone(), session, client).await
         }
-        Some(WalletCommand::List) => commands::wallet::wallet_list(client).await.map_err(|e| {
-            messages::error::wallet_command_error("list", &e.to_string());
-            1
-        }),
-        Some(WalletCommand::Delete { address }) => commands::wallet::wallet_delete(address.clone(), client)
-            .await
-            .map_err(|e| {
-                messages::error::wallet_command_error("delete", &e.to_string());
-                1
-            }),
-        Some(WalletCommand::Prove { game, replay }) => commands::wallet::wallet_prove(*game, *replay, session, client)
-            .await
-            .map_err(|e| {
-                messages::error::wallet_command_error("prove", &e.to_string());
-                1
-            }),
+        Some(WalletCommand::List) => commands::wallet::wallet_list(client).await,
+        Some(WalletCommand::Delete { address }) => commands::wallet::wallet_delete(address.clone(), client).await,
+        Some(WalletCommand::Prove { game }) => commands::wallet::wallet_prove(*game, session, client).await,
         None => {
             // Print help when no subcommand is provided
             let cmd = Cli::command();
@@ -138,7 +105,7 @@ pub async fn handle_wallet(
     }
 }
 
-pub fn handle_skill(command: &Option<SkillCommand>, manifest: &McpManifest) -> Result<(), i32> {
+pub fn handle_skill(command: &Option<SkillCommand>, manifest: &McpManifest) -> Result<(), PoseidonError> {
     match command {
         Some(SkillCommand::List) => {
             for skill in &manifest.skills {
@@ -149,20 +116,14 @@ pub fn handle_skill(command: &Option<SkillCommand>, manifest: &McpManifest) -> R
         Some(SkillCommand::Install { name, path }) => match manifest.skills.iter().find(|s| &s.name == name) {
             Some(skill) => {
                 let dir = std::path::Path::new(path).join(name);
-                if let Err(e) = std::fs::create_dir_all(&dir) {
-                    messages::error::create_dir_error(&e.to_string());
-                    return Err(1);
-                }
-                if let Err(e) = std::fs::write(dir.join("SKILL.md"), &skill.content) {
-                    messages::error::write_skill_error(&e.to_string());
-                    return Err(1);
-                }
+                std::fs::create_dir_all(&dir).map_err(PoseidonError::Io)?;
+                std::fs::write(dir.join("SKILL.md"), &skill.content).map_err(PoseidonError::Io)?;
                 messages::error::skill_installed(name, &dir.display().to_string());
                 Ok(())
             }
             None => {
                 messages::error::skill_not_found(name);
-                Err(1)
+                Err(PoseidonError::NotFound(format!("Skill: {}", name)))
             }
         },
         None => {
@@ -177,7 +138,7 @@ pub fn handle_skill(command: &Option<SkillCommand>, manifest: &McpManifest) -> R
     }
 }
 
-pub async fn handle_ping(verbose: bool) {
+pub async fn handle_ping(verbose: bool) -> Result<(), PoseidonError> {
     let iris_url = std::env::var("EDGE_MCP_URL").unwrap_or_else(|_| EDGE_MCP_URL.to_string());
     let ping_url = format!("{}/ping", iris_url);
 
@@ -191,20 +152,21 @@ pub async fn handle_ping(verbose: bool) {
                 if verbose {
                     messages::success::ping_success(&response.status().to_string());
                 }
-                process::exit(0);
+                Ok(())
             } else {
-                messages::error::ping_failed_status(&response.status().to_string());
-                process::exit(1);
+                Err(PoseidonError::Command(format!(
+                    "Ping failed with status: {}",
+                    response.status()
+                )))
             }
         }
-        Err(e) => {
-            messages::error::ping_failed_error(&e.to_string());
-            process::exit(1);
-        }
+        Err(e) => Err(PoseidonError::Client(crate::messages::IrisClientError::Connection(
+            e.to_string(),
+        ))),
     }
 }
 
-pub fn handle_version() {
+pub fn handle_version() -> Result<(), PoseidonError> {
     let pkg_version = env!("CARGO_PKG_VERSION");
     let sha = option_env!("VERGEN_GIT_SHA").unwrap_or("unknown");
     let short_sha = &sha[..sha.len().min(7)];
@@ -214,4 +176,5 @@ pub fn handle_version() {
     } else {
         println!("edge {pkg_version} ({describe}, commit {short_sha})");
     }
+    Ok(())
 }

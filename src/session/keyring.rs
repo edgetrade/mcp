@@ -41,7 +41,7 @@ impl From<keyring::Error> for SessionError {
 /// This struct provides operations to save, retrieve, and delete
 /// the user encryption key from the OS keyring. There is no file
 /// fallback - all operations require a functional OS keyring.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Session {
     _private: (),
 
@@ -178,12 +178,6 @@ impl Session {
     }
 }
 
-impl Default for Session {
-    fn default() -> Self {
-        Self::new(Config::default())
-    }
-}
-
 #[cfg(all(test, feature = "keyring-tests"))]
 mod tests {
     use super::*;
@@ -213,7 +207,8 @@ mod tests {
         cleanup_keyring();
         let _guard = CleanupGuard;
 
-        let session = Session::new();
+        let config = Config::default();
+        let session = Session::new(config);
         assert!(!session.is_unlocked());
         assert!(session.get().unwrap().is_none());
     }
@@ -226,8 +221,9 @@ mod tests {
         cleanup_keyring();
         let _guard = CleanupGuard;
 
-        let session = Session::new();
-        let key = UserEncryptionKey([0x42u8; 32]);
+        let config = Config::default();
+        let session = Session::new(config);
+        let key = UsersEncryptionKeys::new(SigningKey::from_bytes(&[0x42u8; 32]), [0x42u8; 32], None);
 
         // Save key
         session.save(&key, false).unwrap();
@@ -236,7 +232,7 @@ mod tests {
         // Retrieve key
         let retrieved = session.get().unwrap();
         assert!(retrieved.is_some());
-        assert_eq!(retrieved.unwrap().0, [0x42u8; 32]);
+        assert_eq!(retrieved.unwrap().storage, [0x42u8; 32]);
     }
 
     #[test]
@@ -247,8 +243,9 @@ mod tests {
         cleanup_keyring();
         let _guard = CleanupGuard;
 
-        let session = Session::new();
-        let key = UserEncryptionKey([0x42u8; 32]);
+        let config = Config::default();
+        let session = Session::new(config);
+        let key = UsersEncryptionKeys::new(SigningKey::from_bytes(&[0x42u8; 32]), [0x42u8; 32], None);
 
         // Save and verify
         session.save(&key, false).unwrap();
@@ -268,9 +265,10 @@ mod tests {
         cleanup_keyring();
         let _guard = CleanupGuard;
 
-        let session = Session::new();
-        let key1 = UserEncryptionKey([0x42u8; 32]);
-        let key2 = UserEncryptionKey([0xABu8; 32]);
+        let config = Config::default();
+        let session = Session::new(config);
+        let key1 = UsersEncryptionKeys::new(SigningKey::from_bytes(&[0x42u8; 32]), [0x42u8; 32], None);
+        let key2 = UsersEncryptionKeys::new(SigningKey::from_bytes(&[0xABu8; 32]), [0xABu8; 32], None);
 
         // Save initial key
         session.save(&key1, false).unwrap();
@@ -280,7 +278,7 @@ mod tests {
 
         // Verify new key
         let retrieved = session.get().unwrap();
-        assert_eq!(retrieved.unwrap().0, [0xABu8; 32]);
+        assert_eq!(retrieved.unwrap().storage, [0xABu8; 32]);
     }
 
     #[test]
@@ -291,15 +289,16 @@ mod tests {
         cleanup_keyring();
         let _guard = CleanupGuard;
 
-        let session = Session::new();
-        let key1 = UserEncryptionKey([0x42u8; 32]);
-        let key2 = UserEncryptionKey([0xCDu8; 32]);
+        let config = Config::default();
+        let session = Session::new(config);
+        let key1 = UsersEncryptionKeys::new(SigningKey::from_bytes(&[0x42u8; 32]), [0x42u8; 32], None);
+        let key2 = UsersEncryptionKeys::new(SigningKey::from_bytes(&[0xCDu8; 32]), [0xCDu8; 32], None);
 
         session.save(&key1, false).unwrap();
         session.save(&key2, true).unwrap();
 
         let retrieved = session.get().unwrap();
-        assert_eq!(retrieved.unwrap().0, [0xCDu8; 32]);
+        assert_eq!(retrieved.unwrap().storage, [0xCDu8; 32]);
     }
 
     #[test]
@@ -310,22 +309,11 @@ mod tests {
         cleanup_keyring();
         let _guard = CleanupGuard;
 
-        let session = Session::new();
+        let config = Config::default();
+        let session = Session::new(config);
 
         // Lock when already locked should succeed
         session.lock().unwrap();
-        assert!(!session.is_unlocked());
-    }
-
-    #[test]
-    fn test_default_trait() {
-        let _lock = KEYRING_TEST_MUTEX
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        cleanup_keyring();
-        let _guard = CleanupGuard;
-
-        let session: Session = Default::default();
         assert!(!session.is_unlocked());
     }
 
@@ -337,8 +325,9 @@ mod tests {
         cleanup_keyring();
         let _guard = CleanupGuard;
 
-        let session = Session::new();
-        let key = UserEncryptionKey([0x42u8; 32]);
+        let config = Config::default();
+        let session = Session::new(config);
+        let key = UsersEncryptionKeys::new(SigningKey::from_bytes(&[0x42u8; 32]), [0x42u8; 32], None);
 
         // Unlock should save the key
         session.unlock(&key).unwrap();
@@ -346,7 +335,7 @@ mod tests {
 
         // Verify key was stored correctly
         let retrieved = session.get().unwrap();
-        assert_eq!(retrieved.unwrap().0, [0x42u8; 32]);
+        assert_eq!(retrieved.unwrap().storage, [0x42u8; 32]);
     }
 
     #[test]
@@ -357,9 +346,10 @@ mod tests {
         cleanup_keyring();
         let _guard = CleanupGuard;
 
-        let session = Session::new();
-        let key1 = UserEncryptionKey([0x42u8; 32]);
-        let key2 = UserEncryptionKey([0xABu8; 32]);
+        let config = Config::default();
+        let session = Session::new(config);
+        let key1 = UsersEncryptionKeys::new(SigningKey::from_bytes(&[0x42u8; 32]), [0x42u8; 32], None);
+        let key2 = UsersEncryptionKeys::new(SigningKey::from_bytes(&[0xABu8; 32]), [0xABu8; 32], None);
 
         // Save initial key via unlock
         session.unlock(&key1).unwrap();
@@ -370,7 +360,7 @@ mod tests {
 
         // Original key should still be there
         let retrieved = session.get().unwrap();
-        assert_eq!(retrieved.unwrap().0, [0x42u8; 32]);
+        assert_eq!(retrieved.unwrap().storage, [0x42u8; 32]);
     }
 
     #[test]
@@ -381,9 +371,10 @@ mod tests {
         cleanup_keyring();
         let _guard = CleanupGuard;
 
-        let session = Session::new();
-        let key1 = UserEncryptionKey([0x42u8; 32]);
-        let key2 = UserEncryptionKey([0xABu8; 32]);
+        let config = Config::default();
+        let session = Session::new(config);
+        let key1 = UsersEncryptionKeys::new(SigningKey::from_bytes(&[0x42u8; 32]), [0x42u8; 32], None);
+        let key2 = UsersEncryptionKeys::new(SigningKey::from_bytes(&[0xABu8; 32]), [0xABu8; 32], None);
 
         // Save initial key
         session.save(&key1, false).unwrap();
@@ -393,7 +384,7 @@ mod tests {
 
         // Original key should still be there
         let retrieved = session.get().unwrap();
-        assert_eq!(retrieved.unwrap().0, [0x42u8; 32]);
+        assert_eq!(retrieved.unwrap().storage, [0x42u8; 32]);
     }
 
     #[test]
@@ -404,8 +395,9 @@ mod tests {
         cleanup_keyring();
         let _guard = CleanupGuard;
 
-        let session = Session::new();
-        let key = UserEncryptionKey([0x42u8; 32]);
+        let config = Config::default();
+        let session = Session::new(config);
+        let key = UsersEncryptionKeys::new(SigningKey::from_bytes(&[0x42u8; 32]), [0x42u8; 32], None);
 
         // Save key
         session.save(&key, false).unwrap();
@@ -413,6 +405,6 @@ mod tests {
         // get_user_encryption_key should be equivalent to get()
         let retrieved = session.get_user_encryption_key().unwrap();
         assert!(retrieved.is_some());
-        assert_eq!(retrieved.unwrap().0, [0x42u8; 32]);
+        assert_eq!(retrieved.unwrap().storage, [0x42u8; 32]);
     }
 }

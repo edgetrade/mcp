@@ -53,8 +53,8 @@ impl ManifestManager {
             let fetched = fetch::fetch_manifest(&url, &api_key).await?;
             cache::save_manifest(&config_dir, &fetched)?;
 
-            // Update config timestamp
-            if let Ok(mut config) = Config::load() {
+            // Update config timestamp (load from default config path)
+            if let Ok(mut config) = Config::load(None) {
                 let _ = config.update_manifest_timestamp();
             }
 
@@ -93,7 +93,8 @@ impl ManifestManager {
         let new_manifest = fetch::fetch_manifest(&self.url, &self.api_key).await?;
         cache::save_manifest(&self.config_dir, &new_manifest)?;
 
-        if let Ok(mut config) = Config::load() {
+        // Load from default config path to update timestamp
+        if let Ok(mut config) = Config::load(None) {
             let _ = config.update_manifest_timestamp();
         }
 
@@ -138,7 +139,8 @@ impl ManifestManager {
                                         messages::error::manifest_save_error(&e.to_string());
                                     }
 
-                                    if let Ok(mut config) = Config::load() {
+                                    // Load from default config path to update timestamp
+                                    if let Ok(mut config) = Config::load(None) {
                                         let _ = config.update_manifest_timestamp();
                                     }
 

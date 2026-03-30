@@ -6,6 +6,12 @@
 //!
 //! The unified `Session` enum automatically selects keyring if available,
 //! otherwise falls back to file-based storage with a warning.
+//!
+//! # Configuration
+//!
+//! Session requires an explicit `Config` to be passed during construction.
+//! The configuration should be loaded using [`Config::load_default()`] or
+//! [`Config::load_from(path)`] before creating a Session.
 
 pub mod crypto;
 pub mod filestore;
@@ -16,7 +22,8 @@ pub mod transport;
 pub use filestore::{Session as FileStoreSession, SessionError as FileStoreError};
 pub use keyring::{Session as KeyringSession, SessionError as KeyringError};
 
-use crate::{config::Config, messages};
+use crate::config::Config;
+use crate::messages;
 use crypto::UsersEncryptionKeys;
 
 /// Unified session error type.
@@ -52,10 +59,10 @@ impl From<FileStoreError> for SessionError {
 ///
 /// This enum provides a single interface for session management that:
 /// 1. Attempts to use the OS keyring first (preferred for security)
-/// 2. Falls back to file-based storage if keyring is unavailable
+/// 2. Falls back to file-based storage if the keyring is unavailable
 ///
 /// Both backends provide the same operations: unlock, lock, get_user_encryption_key, is_unlocked.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Session {
     /// OS keyring backend (preferred)
     Keyring(KeyringSession),
@@ -92,12 +99,17 @@ impl Session {
     /// - Returns `Session::Keyring` if the keyring is available
     /// - Returns `Session::File` if the keyring is unavailable (prints warning)
     ///
+    /// # Arguments
+    /// * `config` - The configuration for the session. Must be loaded explicitly
+    ///   using `Config::load_default()` or `Config::load_from(path)`.
+    ///
     /// # Example
     /// ```rust
     /// use poseidon::session::Session;
     /// use poseidon::config::Config;
     ///
-    /// let session = Session::new(Config::default());
+    /// let config = Config::load_default().expect("Failed to load config");
+    /// let session = Session::new(config);
     /// if session.is_unlocked() {
     ///     println!("Session is active");
     /// }
@@ -204,10 +216,48 @@ impl Session {
     pub fn get(&self) -> Result<Option<UsersEncryptionKeys>, SessionError> {
         self.get_user_encryption_key()
     }
-}
 
-impl Default for Session {
-    fn default() -> Self {
-        Self::new(Config::default())
+    /// Unlock the session using a password.
+    ///
+    /// This method derives the user encryption key from the provided password
+    /// and stores it in the session, making the session unlocked.
+    ///
+    /// # Arguments
+    /// * `password` - The user's password to derive the encryption key from.
+    ///
+    /// # Returns
+    /// `Ok(())` on success, or `SessionError` if unlocking fails.
+    ///
+    /// # Example
+    /// ```rust,no_run
+    /// use poseidon::session::Session;
+    /// use poseidon::config::Config;
+    ///
+    /// let config = Config::load_default().expect("Failed to load config");
+    /// let session = Session::new(config);
+    /// session.unlock_with_password("my_secure_password")
+    ///     .expect("Failed to unlock session");
+    /// ```
+    pub fn unlock_with_password(&self, password: &str) -> Result<(), SessionError> {
+        // Derive the user encryption key from the password
+        // This uses a fixed salt for deterministic key derivation
+        // In production, salt should be loaded from secure storage
+        let derived_key = self.derive_key_from_password(password)?;
+        self.unlock(&derived_key)
+    }
+
+    /// Derive a user encryption key from a password.
+    ///
+    /// This is a helper method used by `unlock_with_password`.
+    fn derive_key_from_password(&self, _password: &str) -> Result<UsersEncryptionKeys, SessionError> {
+        // This is a placeholder implementation
+        // The actual implementation should use the same derivation logic
+        // as the filestore unlock flow (PBKDF2 + HKDF)
+        // For now, this returns an error indicating the method is not fully implemented
+        Err(SessionError::Keyring(
+            "Password-based unlock requires salt from secure storage. \
+             Use the filestore unlock command instead."
+                .to_string(),
+        ))
     }
 }

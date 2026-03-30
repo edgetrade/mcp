@@ -38,7 +38,7 @@ impl From<StorageError> for SessionError {
 /// The user encryption key is stored in a file, base64-encoded.
 /// Security is provided by the fact that the UEK itself is only
 /// obtainable after password authentication unlocks the blind_user_key.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Session {
     _private: (),
     /// Config
@@ -110,12 +110,6 @@ impl Session {
     /// Get the config from the session file.
     pub fn get_config(&self) -> Result<&Config, SessionError> {
         Ok(&self.config)
-    }
-}
-
-impl Default for Session {
-    fn default() -> Self {
-        Self::new(Config::default())
     }
 }
 

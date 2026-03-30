@@ -6,7 +6,7 @@
 use crate::messages;
 
 /// Lock keyring - informational message about the session backend.
-pub fn keyring_lock() -> messages::success::CommandResult<()> {
+pub fn keyring_lock() -> crate::error::Result<()> {
     messages::success::keyring_lock_help();
     Ok(())
 }

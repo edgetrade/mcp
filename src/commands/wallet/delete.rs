@@ -4,6 +4,7 @@
 
 use crate::client::IrisClient;
 use crate::client::delete_wallet;
+use crate::error::PoseidonError;
 use crate::messages;
 
 /// Delete a wallet for the specified chain.
@@ -21,8 +22,10 @@ use crate::messages;
 /// - API key is not provided
 /// - Chain type is invalid
 /// - API request fails
-pub async fn wallet_delete(address: String, client: &IrisClient) -> messages::success::CommandResult<()> {
-    delete_wallet(address.clone(), client).await?;
+pub async fn wallet_delete(address: String, client: &IrisClient) -> crate::error::Result<()> {
+    delete_wallet(address.clone(), client)
+        .await
+        .map_err(PoseidonError::from)?;
     messages::success::wallet_deleted(&address);
     Ok(())
 }

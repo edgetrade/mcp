@@ -3,6 +3,8 @@
 //! Implements password change by re-wrapping the UEK with a new KWK
 //! derived from a new password.
 
+use std::fs;
+
 use crate::client::IrisClient;
 use crate::client::rotate_user_encryption_key;
 use crate::commands::key::filestore::auth::password::prompt_password;
@@ -14,9 +16,9 @@ use crate::commands::key::filestore::storage::{
     load_salt, store_blind_user_key, store_salt,
 };
 use crate::config::Config;
+use crate::error::PoseidonError;
 use crate::messages;
 use crate::session::Session;
-use std::fs;
 
 /// Update the authentication (change password).
 ///
@@ -37,31 +39,37 @@ use std::fs;
 /// - Current password is incorrect
 /// - New password confirmation fails
 /// - Storage operations fail
-pub async fn key_update(config: Config, client: &IrisClient) -> messages::success::CommandResult<()> {
+pub async fn key_update(config: Config, client: &IrisClient) -> crate::error::Result<()> {
     let session = Session::new(config);
 
     // Check if session is unlocked and get current UEK
     let current_uek = session
         .get_user_encryption_key()
-        .map_err(|e| messages::error::CommandError::Session(format!("Failed to get user encryption key: {}", e)))?
+        .map_err(|e| {
+            PoseidonError::Session(crate::session::SessionError::Keyring(format!(
+                "Failed to get user encryption key: {}",
+                e
+            )))
+        })?
         .ok_or_else(|| {
-            messages::error::CommandError::Session("Session must be unlocked. Run 'edge key unlock' first.".to_string())
+            PoseidonError::Session(crate::session::SessionError::Keyring(
+                "Session must be unlocked. Run 'edge key unlock' first.".to_string(),
+            ))
         })?;
 
     // Get storage paths
     let storage_dir = default_storage_dir()
-        .ok_or_else(|| messages::error::CommandError::Storage("Could not determine storage directory".to_string()))?;
-    let salt_path = default_salt_path()
-        .ok_or_else(|| messages::error::CommandError::Storage("Could not determine salt path".to_string()))?;
+        .ok_or_else(|| PoseidonError::Storage("Could not determine storage directory".to_string()))?;
+    let salt_path =
+        default_salt_path().ok_or_else(|| PoseidonError::Storage("Could not determine salt path".to_string()))?;
     let blind_key_path = default_blind_user_key_path()
-        .ok_or_else(|| messages::error::CommandError::Storage("Could not determine key path".to_string()))?;
+        .ok_or_else(|| PoseidonError::Storage("Could not determine key path".to_string()))?;
 
     // Load current salt
-    let current_salt_bytes =
-        load_salt(&salt_path).map_err(|e| messages::error::CommandError::Storage(e.to_string()))?;
+    let current_salt_bytes = load_salt(&salt_path).map_err(|e| PoseidonError::Storage(e.to_string()))?;
 
     if current_salt_bytes.len() != 16 {
-        return Err(messages::error::CommandError::Crypto(format!(
+        return Err(PoseidonError::Crypto(format!(
             "Invalid salt size: expected 16, got {}",
             current_salt_bytes.len()
         )));
@@ -71,37 +79,34 @@ pub async fn key_update(config: Config, client: &IrisClient) -> messages::succes
     current_salt.copy_from_slice(&current_salt_bytes);
 
     // Prompt for current password and verify
-    let current_password = prompt_password("Enter current password: ")
-        .map_err(|e| messages::error::CommandError::Authentication(e.to_string()))?;
+    let current_password =
+        prompt_password("Enter current password: ").map_err(|e| PoseidonError::Authentication(e.to_string()))?;
 
     // Derive master key and verify we can unwrap
-    let current_master_key = derive_master_key(&current_password, &current_salt)
-        .map_err(|e| messages::error::CommandError::Crypto(e.to_string()))?;
+    let current_master_key =
+        derive_master_key(&current_password, &current_salt).map_err(|e| PoseidonError::Crypto(e.to_string()))?;
     let current_user_keys = derive_user_keys(&current_master_key);
 
     // Verify by attempting to unwrap
-    let blind_key_bytes =
-        load_blind_user_key(&blind_key_path).map_err(|e| messages::error::CommandError::Storage(e.to_string()))?;
+    let blind_key_bytes = load_blind_user_key(&blind_key_path).map_err(|e| PoseidonError::Storage(e.to_string()))?;
     let blind_user_key = EncryptedData::from_bytes(&blind_key_bytes)
-        .ok_or_else(|| messages::error::CommandError::Crypto("Invalid blind_user_key format".to_string()))?;
+        .ok_or_else(|| PoseidonError::Crypto("Invalid blind_user_key format".to_string()))?;
 
     let verify_result = unwrap_user_encryption_key(&blind_user_key, &current_user_keys.meta.unwrap());
     if verify_result.is_err() {
-        return Err(messages::error::CommandError::Authentication(
+        return Err(PoseidonError::Authentication(
             "Current password is incorrect".to_string(),
         ));
     }
 
     // Prompt for new password
-    let new_password = prompt_password("Enter new password: ")
-        .map_err(|e| messages::error::CommandError::Authentication(e.to_string()))?;
-    let confirm_password = prompt_password("Confirm new password: ")
-        .map_err(|e| messages::error::CommandError::Authentication(e.to_string()))?;
+    let new_password =
+        prompt_password("Enter new password: ").map_err(|e| PoseidonError::Authentication(e.to_string()))?;
+    let confirm_password =
+        prompt_password("Confirm new password: ").map_err(|e| PoseidonError::Authentication(e.to_string()))?;
 
     if new_password != confirm_password {
-        return Err(messages::error::CommandError::InvalidInput(
-            "New passwords do not match".to_string(),
-        ));
+        return Err(PoseidonError::InvalidInput("New passwords do not match".to_string()));
     }
 
     // Generate new salt
@@ -127,17 +132,18 @@ pub async fn key_update(config: Config, client: &IrisClient) -> messages::succes
     store_blind_user_key(&new_blind_key_path, &new_blind_user_key.to_bytes())?;
 
     // Atomically rename new files over old files
-    fs::rename(&new_salt_path, &salt_path).map_err(|e| messages::error::CommandError::Storage(e.to_string()))?;
-    fs::rename(&new_blind_key_path, &blind_key_path)
-        .map_err(|e| messages::error::CommandError::Storage(e.to_string()))?;
+    fs::rename(&new_salt_path, &salt_path).map_err(|e| PoseidonError::Storage(e.to_string()))?;
+    fs::rename(&new_blind_key_path, &blind_key_path).map_err(|e| PoseidonError::Storage(e.to_string()))?;
 
     let new_uek = session.get_user_encryption_key().unwrap();
     if new_uek.is_none() {
-        return Err(messages::error::CommandError::Session(
-            "Something strange hanppened. Please contact support.".to_string(),
-        ));
+        return Err(PoseidonError::Session(crate::session::SessionError::Keyring(
+            "Something strange happened. Please contact support.".to_string(),
+        )));
     }
-    rotate_user_encryption_key(&new_uek.unwrap(), &current_uek, client).await?;
+    rotate_user_encryption_key(&new_uek.unwrap(), &current_uek, client)
+        .await
+        .map_err(PoseidonError::from)?;
 
     messages::success::password_updated();
     messages::success::session_remains_unlocked();

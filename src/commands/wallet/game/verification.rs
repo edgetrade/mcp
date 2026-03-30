@@ -1,13 +1,12 @@
 //! Verification module for the prove game feature.
 //!
 //! Handles writing verification instructions to game.toml and provides
-//! replay functionality for manual verification of game outcomes.
+//! manual verification of game outcomes.
 
 use std::io::Write;
 
 use crate::commands::wallet::game::game_state::GameResultEntry;
 use crate::commands::wallet::game::game_state::{GameState, game_state_path, load_game_state};
-use crate::messages;
 
 /// Verification instructions for game.toml
 pub const VERIFICATION_INSTRUCTIONS: &str = r#"
@@ -21,10 +20,6 @@ pub const VERIFICATION_INSTRUCTIONS: &str = r#"
 # Game 2: The Vault - Tests password-based wallet encryption
 #
 # This section explains how to independently verify all cryptographic operations.
-
-[verification]
-# Run the prove game with --replay to verify previous results
-enabled = true
 
 # =============================================================================
 # GAME 1: THE BLIND ORACLE - VERIFICATION
@@ -204,13 +199,7 @@ command = "cast wallet address --private-key <key>"
 #
 # 2. This file will be populated with all game data
 #
-# 3. Run with --replay to execute games without creating new data:
-#    edge wallet prove --game 1 --replay
-#    edge wallet prove --game 2 --replay
-#
-# 4. Compare replay results with original results in [[game_results]]
-#
-# 5. Use the verification steps above to independently verify:
+# 3. Use the verification steps above to independently verify:
 #    - Intent sealing (Game 1)
 #    - Signature validity (Game 1)
 #    - Key derivation (Game 2)
@@ -248,41 +237,18 @@ description = "Derived address from recovered key matches stored address"
 ///
 /// # Returns
 /// Ok(()) on success, or an error if writing fails
-pub fn write_verification_instructions() -> messages::success::CommandResult<()> {
-    let path = game_state_path().map_err(|e| messages::error::CommandError::Storage(e.to_string()))?;
+pub fn write_verification_instructions() -> crate::error::Result<()> {
+    let path = game_state_path()?;
 
     // Append verification instructions to the file
     let mut file = std::fs::OpenOptions::new()
         .append(true)
         .create(true)
-        .open(&path)
-        .map_err(|e| messages::error::CommandError::Io(e.to_string()))?;
+        .open(&path)?;
 
-    writeln!(file, "{}", VERIFICATION_INSTRUCTIONS).map_err(|e| messages::error::CommandError::Io(e.to_string()))?;
+    writeln!(file, "{}", VERIFICATION_INSTRUCTIONS)?;
 
     Ok(())
-}
-
-/// Prompt the user for replay confirmation.
-///
-/// Displays a y/n prompt and returns true if the user wants to replay.
-///
-/// # Arguments
-/// * `game_number` - The game number (1 or 2) to display in the prompt
-///
-/// # Returns
-/// Ok(true) if user wants to replay, Ok(false) otherwise
-pub fn prompt_replay(game_number: u8) -> messages::success::CommandResult<bool> {
-    println!();
-    let prompt = format!(
-        "Game {} complete. Would you like to replay with the same data? [y/N]: ",
-        game_number
-    );
-
-    let input = rpassword::prompt_password(&prompt).map_err(|e| messages::error::CommandError::Io(e.to_string()))?;
-
-    let response = input.trim().to_lowercase();
-    Ok(response == "y" || response == "yes")
 }
 
 /// Check if verification instructions should be written.
@@ -292,8 +258,8 @@ pub fn prompt_replay(game_number: u8) -> messages::success::CommandResult<bool> 
 ///
 /// # Returns
 /// Ok(true) if instructions were written, Ok(false) otherwise
-pub fn maybe_write_verification_instructions() -> messages::success::CommandResult<bool> {
-    let state = load_game_state().map_err(|e| messages::error::CommandError::Storage(e.to_string()))?;
+pub fn maybe_write_verification_instructions() -> crate::error::Result<bool> {
+    let state = load_game_state()?;
 
     // Check if we have results from both games
     let has_game1 = state.game_results.iter().any(|r| r.game_type == 1);
@@ -301,8 +267,8 @@ pub fn maybe_write_verification_instructions() -> messages::success::CommandResu
 
     if has_game1 && has_game2 {
         // Check if instructions already exist by looking for a marker
-        let path = game_state_path().map_err(|e| messages::error::CommandError::Storage(e.to_string()))?;
-        let contents = std::fs::read_to_string(&path).map_err(|e| messages::error::CommandError::Io(e.to_string()))?;
+        let path = game_state_path()?;
+        let contents = std::fs::read_to_string(&path)?;
 
         if !contents.contains("VERIFICATION INSTRUCTIONS") {
             write_verification_instructions()?;
@@ -313,7 +279,7 @@ pub fn maybe_write_verification_instructions() -> messages::success::CommandResu
     Ok(false)
 }
 
-/// Format game results for display in replay mode.
+/// Format game results for display.
 ///
 /// Shows clear formatting of all game outcomes from the game state.
 ///
@@ -391,9 +357,6 @@ pub fn format_game_results(state: &GameState) -> String {
         output.push('\n');
     }
 
-    output.push_str("\nTo replay these games with the same data:\n");
-    output.push_str("  edge wallet prove --replay\n\n");
-
     output
 }
 
@@ -419,34 +382,4 @@ fn format_result(index: usize, result: &GameResultEntry) -> String {
 
     output.push('\n');
     output
-}
-
-/// Display verification summary after games complete.
-///
-/// Shows the user how to manually verify the game results.
-pub fn display_verification_summary() {
-    println!("\n========================================");
-    println!("      Verification Instructions        ");
-    println!("========================================\n");
-
-    println!("All game data has been saved to ~/.config/edge/game.toml\n");
-
-    println!("To verify the cryptographic operations:\n");
-
-    println!("Game 1 (Blind Oracle):");
-    println!("  - View sealed intents in game.toml");
-    println!("  - Use 'age' tool to verify intent encryption");
-    println!("  - Use 'cast' (Foundry) to verify signatures\n");
-
-    println!("Game 2 (Vault):");
-    println!("  - View derived keys and encrypted blobs in game.toml");
-    println!("  - Reproduce HKDF-SHA256 key derivation with OpenSSL");
-    println!("  - Decrypt wallet blobs with AES-256-GCM\n");
-
-    println!("Detailed instructions have been added to game.toml\n");
-
-    println!("To replay with existing data:");
-    println!("  edge wallet prove --game 1 --replay");
-    println!("  edge wallet prove --game 2 --replay");
-    println!();
 }

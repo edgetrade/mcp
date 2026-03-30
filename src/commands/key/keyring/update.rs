@@ -6,6 +6,7 @@
 use crate::client::{IrisClient, rotate_user_encryption_key};
 use crate::commands::key::keyring::keyring_create;
 use crate::config::Config;
+use crate::error::PoseidonError;
 use crate::messages;
 use crate::session::KeyringSession as Session;
 
@@ -24,21 +25,21 @@ use crate::session::KeyringSession as Session;
 /// - No existing key exists (must create first)
 /// - Key generation fails
 /// - Keyring is inaccessible
-pub async fn keyring_update(config: Config, client: &IrisClient) -> messages::success::CommandResult<()> {
+pub async fn keyring_update(config: Config, client: &IrisClient) -> crate::error::Result<()> {
     let session = Session::new(config.clone());
 
     // Check if key exists first
     if !session.is_unlocked() {
-        return Err(messages::error::CommandError::Session(
+        return Err(PoseidonError::Session(crate::session::SessionError::Keyring(
             "No key found. Run 'edge key create' first.".to_string(),
-        ));
+        )));
     }
 
     let old = session.get_user_encryption_key().unwrap();
     if old.is_none() {
-        return Err(messages::error::CommandError::Session(
+        return Err(PoseidonError::Session(crate::session::SessionError::Keyring(
             "No key found. Run 'edge key create' first.".to_string(),
-        ));
+        )));
     }
 
     let old_uek = old.unwrap();
@@ -47,15 +48,15 @@ pub async fn keyring_update(config: Config, client: &IrisClient) -> messages::su
 
     let new = session.get_user_encryption_key().unwrap();
     if new.is_none() {
-        return Err(messages::error::CommandError::Session(
+        return Err(PoseidonError::Session(crate::session::SessionError::Keyring(
             "No key found. Run 'edge key create' first.".to_string(),
-        ));
+        )));
     }
 
     let new_uek = new.unwrap();
     rotate_user_encryption_key(&new_uek, &old_uek, client)
         .await
-        .map_err(|e| messages::error::CommandError::Session(e.to_string()))?;
+        .map_err(|e| PoseidonError::Session(crate::session::SessionError::Keyring(e.to_string())))?;
 
     messages::success::key_updated();
     Ok(())
@@ -118,11 +119,8 @@ mod tests {
         let _guard = CleanupGuard;
 
         // Update without creating first should fail
-        let result = keyring_update();
-        assert!(
-            matches!(result, Err(messages::error::CommandError::Session(_))),
-            "Should fail when no key exists"
-        );
+        let result = keyring_update(Config::default(), &test_client).await;
+        assert!(result.is_err(), "Should fail when no key exists");
     }
 
     #[test]

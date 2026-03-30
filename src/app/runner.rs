@@ -4,10 +4,10 @@
 //! the desktop and server binaries. The key command implementations differ
 //! based on compile-time feature flags.
 
-use std::process;
+use std::path::PathBuf;
 use std::sync::Arc;
 
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use colored_json::to_colored_json_auto;
 use tokio::sync::RwLock;
 
@@ -15,10 +15,10 @@ use crate::app::client::parse_api_credentials;
 use crate::app::handler::{
     KeyCommandArgs, handle_key, handle_ping, handle_skill, handle_version, handle_wallet, serve,
 };
-use crate::app::{KeyCreateFn, KeyDeleteFn, KeyLockFn, KeyUnlockFn, KeyUpdateFn};
 use crate::client::new_client;
 use crate::commands::serve::mcp::EdgeServer;
 use crate::config::Config;
+use crate::error::PoseidonError;
 use crate::manifest::{ManifestManager, McpManifest};
 use crate::messages;
 use crate::session::crypto::UsersEncryptionKeys;
@@ -126,19 +126,11 @@ impl Default for App {
 }
 
 /// Main application entry point.
-///
-/// Accepts key command implementations based on the compile-time feature flag.
-/// Desktop and server binaries call this with their respective key commands.
-pub async fn run(
-    key_create: KeyCreateFn,
-    key_unlock: KeyUnlockFn,
-    key_lock: KeyLockFn,
-    key_update: KeyUpdateFn,
-    key_delete: KeyDeleteFn,
-) {
+pub async fn run() -> Result<(), PoseidonError> {
     // Create the App instance with session management
     let cli = Cli::parse();
-    let config = Config::load().unwrap_or_default();
+    let config_path = Some(PathBuf::from(&cli.config));
+    let config = Config::load(config_path).unwrap_or_default();
     let mut app = App::new(config.clone());
 
     // ------------------------------------------------------------------------
@@ -150,13 +142,11 @@ pub async fn run(
     // (e.g., rotating keys on the server), so we initialize it early
 
     if matches!(cli.command, Some(Commands::Ping)) {
-        handle_ping(cli.verbose).await;
-        return;
+        return handle_ping(cli.verbose).await;
     }
 
     if matches!(cli.command, Some(Commands::Version)) {
-        handle_version();
-        return;
+        return handle_version();
     }
 
     // ------------------------------------------------------------------------
@@ -171,36 +161,20 @@ pub async fn run(
         client_credentials.verbose,
     )
     .await
-    .unwrap_or_else(|e| {
-        messages::error::connection_failed(&e.to_string());
-        process::exit(1);
-    });
+    .map_err(PoseidonError::Client)?;
 
     if let Some(Commands::Key { command }) = &cli.command {
-        if let Err(code) = handle_key(
-            key_create,
-            key_unlock,
-            key_lock,
-            key_update,
-            key_delete,
-            KeyCommandArgs {
-                command: Some(command.clone().unwrap()),
-                config: config.clone(),
-                client: api_client.clone(),
-            },
-        )
-        .await
-        {
-            process::exit(code);
-        }
-        return;
+        return handle_key(KeyCommandArgs {
+            command: Some(command.clone().unwrap()),
+            config: config.clone(),
+            client: api_client.clone(),
+            session: app.session.clone(),
+        })
+        .await;
     }
 
     if let Some(Commands::Wallet { command }) = &cli.command {
-        if let Err(code) = handle_wallet(command, &app.session, &api_client).await {
-            process::exit(code);
-        }
-        return;
+        return handle_wallet(command, &app.session, &api_client).await;
     }
 
     // ------------------------------------------------------------------------
@@ -209,32 +183,28 @@ pub async fn run(
     //
     // ------------------------------------------------------------------------
     // Initialize manifest through App - this couples session and manifest lifecycle
-    if let Err(e) = app
-        .init_manifest(
-            client_credentials.iris_url,
-            client_credentials.api_key,
-            true, // enable background refresh
-        )
-        .await
-    {
-        messages::error::manifest_load_error(&e.to_string());
-        process::exit(1);
-    }
+    app.init_manifest(
+        client_credentials.iris_url,
+        client_credentials.api_key,
+        true, // enable background refresh
+    )
+    .await
+    .map_err(|e| PoseidonError::Manifest(e.to_string()))?;
 
-    let shared_manifest = app.manifest().expect("Manifest should be initialized");
+    let shared_manifest = app
+        .manifest()
+        .ok_or_else(|| PoseidonError::Manifest("Manifest should be initialized".to_string()))?;
 
     if matches!(cli.command, Some(Commands::ListTools)) {
         let manifest = shared_manifest.read().await;
-        messages::success::json_output(&to_colored_json_auto(&manifest.tools).unwrap());
-        return;
+        let json = to_colored_json_auto(&manifest.tools).map_err(|e| PoseidonError::Serialization(e.to_string()))?;
+        messages::success::json_output(&json);
+        return Ok(());
     }
 
     if let Some(Commands::Skill { command: cmd }) = &cli.command {
         let manifest = shared_manifest.read().await;
-        if let Err(code) = handle_skill(cmd, &manifest) {
-            process::exit(code);
-        }
-        return;
+        return handle_skill(cmd, &manifest);
     }
 
     // ------------------------------------------------------------------------
@@ -245,13 +215,16 @@ pub async fn run(
     if let Some(Commands::Serve { command: _, args }) = &cli.command {
         let server = EdgeServer::new(api_client, shared_manifest.clone())
             .await
-            .map_err(|e| {
-                messages::error::iris_connection_failed(&e.to_string());
-                1
-            });
+            .map_err(|e: Box<dyn std::error::Error>| PoseidonError::Other(e.to_string()))?;
 
-        if let Err(code) = serve(args, server.unwrap()).await {
-            process::exit(code);
-        }
+        return serve(args, server).await;
     }
+
+    // ------------------------------------------------------------------------
+    //
+    // No command matched - display help
+    //
+    // ------------------------------------------------------------------------
+    Cli::command().print_long_help()?;
+    Ok(())
 }

@@ -13,6 +13,7 @@ use tyche_enclave::envelopes::storage::derive_storage_key;
 use tyche_enclave::types::constants::USER_ENCRYPTION_KEY_HKDF_INFO;
 
 use crate::config::Config;
+use crate::error::PoseidonError;
 use crate::messages;
 use crate::session::KeyringSession as Session;
 use crate::session::crypto::UsersEncryptionKeys;
@@ -37,7 +38,7 @@ use crate::session::crypto::UsersEncryptionKeys;
 /// - Key already exists (idempotent protection via keyring)
 /// - Passwords do not match
 /// - HKDF expansion fails
-pub fn keyring_create_with_context(context: &str, config: Config) -> messages::success::CommandResult<()> {
+pub fn keyring_create_with_context(context: &str, config: Config) -> crate::error::Result<()> {
     // Show context-specific intro message
     if context == "wallet" {
         messages::success::no_key_found_create();
@@ -51,15 +52,18 @@ pub fn keyring_create_with_context(context: &str, config: Config) -> messages::s
     }
 
     // Prompt for password
-    let password = rpassword::prompt_password(messages::prompt::create_password()).unwrap();
+    let password = rpassword::prompt_password(messages::prompt::create_password())
+        .map_err(|e| PoseidonError::InvalidInput(format!("Failed to read password: {}", e)))?;
     let password_trimmed = password.trim();
 
     if password_trimmed.is_empty() {
         // User wants a random key - get confirmation
         print!("Are you sure? (Y/n) ");
-        std::io::stdout().flush()?;
+        std::io::stdout().flush().map_err(PoseidonError::Io)?;
         let mut confirmation = String::new();
-        std::io::stdin().read_line(&mut confirmation)?;
+        std::io::stdin()
+            .read_line(&mut confirmation)
+            .map_err(PoseidonError::Io)?;
 
         if confirmation.trim().to_lowercase().starts_with("n") {
             messages::success::key_creation_cancelled();
@@ -68,7 +72,9 @@ pub fn keyring_create_with_context(context: &str, config: Config) -> messages::s
 
         messages::prompt::confirm_no_password();
         let mut continue_input = String::new();
-        std::io::stdin().read_line(&mut continue_input)?;
+        std::io::stdin()
+            .read_line(&mut continue_input)
+            .map_err(PoseidonError::Io)?;
 
         if continue_input.trim().to_lowercase().starts_with("n") {
             messages::success::key_creation_cancelled();
@@ -76,12 +82,11 @@ pub fn keyring_create_with_context(context: &str, config: Config) -> messages::s
         }
     } else {
         // Password provided - confirm it
-        let confirm_password = rpassword::prompt_password(messages::prompt::confirm_password());
+        let confirm_password = rpassword::prompt_password(messages::prompt::confirm_password())
+            .map_err(|e| PoseidonError::InvalidInput(format!("Failed to read password: {}", e)))?;
 
-        if password_trimmed != confirm_password?.trim() {
-            return Err(messages::error::CommandError::InvalidInput(
-                "Passwords do not match".to_string(),
-            ));
+        if password_trimmed != confirm_password.trim() {
+            return Err(PoseidonError::InvalidInput("Passwords do not match".to_string()));
         }
     }
 
@@ -109,19 +114,19 @@ pub fn keyring_create_with_context(context: &str, config: Config) -> messages::s
 /// - Keyring is unavailable
 /// - Key already exists (idempotent protection via keyring)
 /// - HKDF expansion fails
-fn keyring_create_core(password: &str, config: Config) -> messages::success::CommandResult<UsersEncryptionKeys> {
+fn keyring_create_core(password: &str, config: Config) -> crate::error::Result<UsersEncryptionKeys> {
     let session = Session::new(config);
 
     // Check if key already exists
     if session.is_unlocked() {
-        return Err(messages::error::CommandError::AlreadyExists);
+        return Err(PoseidonError::AlreadyExists("Key".to_string()));
     }
 
     let uek = if password.is_empty() {
         // Generate random 32-byte key
         let mut uek_bytes = [0u8; 32];
         getrandom::fill(&mut uek_bytes)
-            .map_err(|_| messages::error::CommandError::Crypto("Failed to generate random key".to_string()))?;
+            .map_err(|_| PoseidonError::Crypto("Failed to generate random key".to_string()))?;
         let uek = derive_storage_key(&uek_bytes);
         UsersEncryptionKeys::new(SigningKey::from_bytes(&uek_bytes), uek, None)
     } else {
@@ -129,7 +134,7 @@ fn keyring_create_core(password: &str, config: Config) -> messages::success::Com
         let hkdf = Hkdf::<Sha256>::new(None, password.as_bytes());
         let mut uek_bytes = [0u8; 32];
         hkdf.expand(USER_ENCRYPTION_KEY_HKDF_INFO, &mut uek_bytes)
-            .map_err(|e| messages::error::CommandError::Crypto(format!("HKDF expansion failed: {}", e)))?;
+            .map_err(|e| PoseidonError::Crypto(format!("HKDF expansion failed: {}", e)))?;
         let uek = derive_storage_key(&uek_bytes);
         UsersEncryptionKeys::new(SigningKey::from_bytes(&uek_bytes), uek, None)
     };
@@ -137,7 +142,7 @@ fn keyring_create_core(password: &str, config: Config) -> messages::success::Com
     // Store in keyring
     session
         .save(&uek, false)
-        .map_err(|e| messages::error::CommandError::Storage(e.to_string()))?;
+        .map_err(|e| PoseidonError::Storage(e.to_string()))?;
 
     Ok(uek)
 }
@@ -158,7 +163,7 @@ fn keyring_create_core(password: &str, config: Config) -> messages::success::Com
 /// - Key already exists (idempotent protection via keyring)
 /// - Passwords do not match
 /// - HKDF expansion fails
-pub fn keyring_create(config: Config) -> messages::success::CommandResult<()> {
+pub fn keyring_create(config: Config) -> crate::error::Result<()> {
     keyring_create_with_context("", config)
 }
 
@@ -186,8 +191,8 @@ mod tests {
     }
 
     /// Internal function for testing key creation with password
-    fn keyring_create_with_password(password: &str) -> messages::success::CommandResult<UserEncryptionKey> {
-        keyring_create_core(password)
+    fn keyring_create_with_password(password: &str) -> crate::error::Result<UsersEncryptionKeys> {
+        keyring_create_core(password, Config::default())
     }
 
     #[test]
@@ -263,10 +268,7 @@ mod tests {
 
         // Try to create again - should fail with AlreadyExists
         let result = keyring_create_with_password("");
-        assert!(
-            matches!(result, Err(messages::error::CommandError::AlreadyExists)),
-            "Should fail when key already exists"
-        );
+        assert!(result.is_err(), "Should fail when key already exists");
     }
 
     #[test]

@@ -6,6 +6,7 @@
 
 use tyche_enclave::types::chain_type::ChainType;
 
+use crate::error::PoseidonError;
 use crate::messages;
 use crate::session::Session;
 use crate::wallet::create::create_wallet;
@@ -29,12 +30,12 @@ pub async fn wallet_create(
     name: Option<String>,
     session: &Session,
     client: &crate::client::IrisClient,
-) -> messages::success::CommandResult<()> {
+) -> crate::error::Result<()> {
     // Step 2: Get the UEK from session
     let uek = session
         .get_user_encryption_key()
-        .map_err(|e| messages::error::CommandError::Session(e.to_string()))?
-        .ok_or_else(|| messages::error::CommandError::Session("Session unavailable".to_string()))?;
+        .map_err(|e| PoseidonError::Session(crate::session::SessionError::Keyring(e.to_string())))?
+        .ok_or(PoseidonError::Session(crate::session::SessionError::NotFound))?;
 
     // Step 3: Print progress message
     messages::success::wallet_importing();
@@ -44,7 +45,7 @@ pub async fn wallet_create(
     // TODO: add enclave keys
     let wallet = create_wallet(chain, name, &uek, client)
         .await
-        .map_err(messages::error::CommandError::from)?;
+        .map_err(PoseidonError::from)?;
 
     // Step 5: Print success message
     messages::success::wallet_created(chain.to_string().as_str(), &wallet.address);

@@ -12,6 +12,7 @@ use crate::commands::key::filestore::storage::{
     default_blind_user_key_path, default_salt_path, default_storage_dir, ensure_storage_dir, store_blind_user_key,
     store_salt,
 };
+use crate::error::PoseidonError;
 use crate::messages;
 
 /// Internal function containing the common key creation logic.
@@ -33,53 +34,47 @@ use crate::messages;
 /// - Password confirmation fails
 /// - Key derivation fails
 /// - Storage operations fail
-fn key_create_internal() -> messages::success::CommandResult<PathBuf> {
+fn key_create_internal() -> crate::error::Result<PathBuf> {
     // Check if keys already exist
     if check_keys_exist()? {
-        return Err(messages::error::CommandError::AlreadyExists);
+        return Err(PoseidonError::AlreadyExists("Key".to_string()));
     }
 
     // Ensure storage directory exists
     let storage_dir = default_storage_dir()
-        .ok_or_else(|| messages::error::CommandError::Storage("Could not determine home directory".to_string()))?;
-    ensure_storage_dir(&storage_dir).map_err(|e| messages::error::CommandError::Storage(e.to_string()))?;
+        .ok_or_else(|| PoseidonError::Storage("Could not determine home directory".to_string()))?;
+    ensure_storage_dir(&storage_dir).map_err(|e| PoseidonError::Storage(e.to_string()))?;
 
     // Prompt for password and confirmation
-    let password = prompt_password("Create password: ")
-        .map_err(|e| messages::error::CommandError::Authentication(e.to_string()))?;
-    let confirm = prompt_password("Confirm password: ")
-        .map_err(|e| messages::error::CommandError::Authentication(e.to_string()))?;
+    let password = prompt_password("Create password: ").map_err(|e| PoseidonError::Authentication(e.to_string()))?;
+    let confirm = prompt_password("Confirm password: ").map_err(|e| PoseidonError::Authentication(e.to_string()))?;
 
     if password != confirm {
-        return Err(messages::error::CommandError::InvalidInput(
-            "Passwords do not match".to_string(),
-        ));
+        return Err(PoseidonError::InvalidInput("Passwords do not match".to_string()));
     }
 
     // Generate random salt
     let salt = generate_salt();
 
     // Derive master key from password + salt
-    let master_key =
-        derive_master_key(&password, &salt).map_err(|e| messages::error::CommandError::Crypto(e.to_string()))?;
+    let master_key = derive_master_key(&password, &salt).map_err(|e| PoseidonError::Crypto(e.to_string()))?;
 
     // Derive UEK and KWK from master key
     let user_keys = derive_user_keys(&master_key);
 
     // Wrap UEK with KWK to create blind_user_key
-    let blind_user_key =
-        wrap_user_encryption_key(&user_keys).map_err(|e| messages::error::CommandError::Crypto(e.to_string()))?;
+    let blind_user_key = wrap_user_encryption_key(&user_keys).map_err(|e| PoseidonError::Crypto(e.to_string()))?;
 
     // Get storage paths
     let blind_key_path = default_blind_user_key_path()
-        .ok_or_else(|| messages::error::CommandError::Storage("Could not determine key path".to_string()))?;
-    let salt_path = default_salt_path()
-        .ok_or_else(|| messages::error::CommandError::Storage("Could not determine salt path".to_string()))?;
+        .ok_or_else(|| PoseidonError::Storage("Could not determine key path".to_string()))?;
+    let salt_path =
+        default_salt_path().ok_or_else(|| PoseidonError::Storage("Could not determine salt path".to_string()))?;
 
     // Store blind_user_key and salt
     store_blind_user_key(&blind_key_path, &blind_user_key.to_bytes())
-        .map_err(|e| messages::error::CommandError::Storage(e.to_string()))?;
-    store_salt(&salt_path, &salt).map_err(|e| messages::error::CommandError::Storage(e.to_string()))?;
+        .map_err(|e| PoseidonError::Storage(e.to_string()))?;
+    store_salt(&salt_path, &salt).map_err(|e| PoseidonError::Storage(e.to_string()))?;
 
     Ok(storage_dir)
 }
@@ -101,7 +96,7 @@ fn key_create_internal() -> messages::success::CommandResult<PathBuf> {
 /// - Password confirmation fails
 /// - Key derivation fails
 /// - Storage operations fail
-pub fn key_create() -> messages::success::CommandResult<()> {
+pub fn key_create() -> crate::error::Result<()> {
     let storage_dir = key_create_internal()?;
 
     // Print success message (never print keys)
@@ -129,7 +124,7 @@ pub fn key_create() -> messages::success::CommandResult<()> {
 /// - Password confirmation fails
 /// - Key derivation fails
 /// - Storage operations fail
-pub fn key_create_with_context(context: &str) -> messages::success::CommandResult<()> {
+pub fn key_create_with_context(context: &str) -> crate::error::Result<()> {
     // Show custom intro for wallet context
     if context == "wallet" {
         messages::success::key_created();
@@ -152,11 +147,11 @@ pub fn key_create_with_context(context: &str) -> messages::success::CommandResul
 /// Check if keys already exist on the filesystem.
 ///
 /// Returns `true` if both blind_user_key and salt exist.
-fn check_keys_exist() -> messages::success::CommandResult<bool> {
+fn check_keys_exist() -> crate::error::Result<bool> {
     let blind_key_path = default_blind_user_key_path()
-        .ok_or_else(|| messages::error::CommandError::Storage("Could not determine key path".to_string()))?;
-    let salt_path = default_salt_path()
-        .ok_or_else(|| messages::error::CommandError::Storage("Could not determine salt path".to_string()))?;
+        .ok_or_else(|| PoseidonError::Storage("Could not determine key path".to_string()))?;
+    let salt_path =
+        default_salt_path().ok_or_else(|| PoseidonError::Storage("Could not determine salt path".to_string()))?;
 
     Ok(blind_key_path.exists() && salt_path.exists())
 }

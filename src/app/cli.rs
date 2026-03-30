@@ -4,7 +4,7 @@
 
 use clap::{Parser, Subcommand, ValueEnum};
 
-use crate::config::DEFAULT_CONFIG_PATH;
+use crate::config::default_config_path_buf;
 
 pub const DEFAULT_TRANSPORT: &str = "stdio";
 pub const DEFAULT_HOST: &str = "127.0.0.1";
@@ -31,14 +31,13 @@ pub enum Transport {
 /// same place.
 #[derive(Parser)]
 #[command(name = "edge")]
-#[command(arg_required_else_help = true)]
 #[command(max_term_width = 120)]
 pub struct Cli {
     #[arg(
         long,
         global = true,
         env = "EDGE_CONFIG",
-        default_value_t = DEFAULT_CONFIG_PATH.clone(),
+        default_value_t = default_config_path_buf().map(|p| p.to_string_lossy().to_string()).unwrap_or_default(),
         help = "Path to configuration file"
     )]
     pub config: String,
@@ -185,9 +184,6 @@ pub enum WalletCommand {
         /// Game to play: 1 (Blind Oracle), 2 (The Vault), or both
         #[arg(long)]
         game: Option<u8>,
-        /// Replay the last game without creating new intents
-        #[arg(long)]
-        replay: bool,
     },
 }
 

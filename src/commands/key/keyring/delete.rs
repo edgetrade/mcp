@@ -3,6 +3,7 @@
 //! Removes the user encryption key from the OS keyring.
 //! This operation is idempotent - it succeeds even if no key exists.
 
+use crate::error::PoseidonError;
 use crate::messages;
 use crate::session::keyring::{KEYRING_SERVICE, KEYRING_USERNAME};
 
@@ -18,10 +19,11 @@ use crate::session::keyring::{KEYRING_SERVICE, KEYRING_USERNAME};
 /// # Errors
 /// Returns an error if:
 /// - Keyring is inaccessible
-pub fn keyring_delete() -> messages::success::CommandResult<()> {
+pub fn keyring_delete() -> crate::error::Result<()> {
     let check = rpassword::prompt_password(
         "If you have not saved your password, you WILL lose access to your wallets.\nAre you sure you want to delete? (y/N) ",
-    )?;
+    )
+    .map_err(|e| PoseidonError::InvalidInput(format!("Failed to read confirmation: {}", e)))?;
     let check_trimmed = check.trim();
     if !check_trimmed.to_lowercase().starts_with("y") {
         return Ok(());
@@ -41,9 +43,9 @@ pub fn keyring_delete() -> messages::success::CommandResult<()> {
 /// # Errors
 /// Returns an error if:
 /// - Keyring is inaccessible
-fn keyring_delete_internal() -> messages::success::CommandResult<()> {
+fn keyring_delete_internal() -> crate::error::Result<()> {
     let entry = keyring::Entry::new(KEYRING_SERVICE, KEYRING_USERNAME)
-        .map_err(|e| messages::error::CommandError::Storage(format!("Failed to access keyring: {}", e)))?;
+        .map_err(|e| PoseidonError::Storage(format!("Failed to access keyring: {}", e)))?;
 
     match entry.delete_credential() {
         Ok(()) => {
@@ -54,10 +56,7 @@ fn keyring_delete_internal() -> messages::success::CommandResult<()> {
             messages::success::key_config_not_found();
             Ok(())
         }
-        Err(e) => Err(messages::error::CommandError::Storage(format!(
-            "Failed to delete key: {}",
-            e
-        ))),
+        Err(e) => Err(PoseidonError::Storage(format!("Failed to delete key: {}", e))),
     }
 }
 

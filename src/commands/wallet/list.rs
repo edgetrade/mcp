@@ -5,6 +5,7 @@
 
 use crate::client::IrisClient;
 use crate::client::list_wallets;
+use crate::error::PoseidonError;
 use crate::messages;
 
 /// List wallets for the agent.
@@ -18,8 +19,8 @@ use crate::messages;
 /// Returns an error if:
 /// - API key is not provided
 /// - API request fails
-pub async fn wallet_list(client: &IrisClient) -> messages::success::CommandResult<()> {
-    let wallets = list_wallets(client).await?;
+pub async fn wallet_list(client: &IrisClient) -> crate::error::Result<()> {
+    let wallets = list_wallets(client).await.map_err(PoseidonError::from)?;
 
     messages::success::wallets_list_header();
     for wallet in wallets {
