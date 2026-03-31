@@ -9,3 +9,6 @@ pub mod agent_rotate_user_encryption_key;
 pub mod intelligence_screen_tokens;
 pub mod intelligence_search_swaps;
 pub mod intelligence_search_tokens;
+pub mod orders_apply_entry_strategy;
+pub mod orders_apply_exit_strategy;
+pub mod orders_place_spot_order;
