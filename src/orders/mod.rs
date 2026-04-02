@@ -2,7 +2,6 @@ use std::str::FromStr;
 
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
-use erato::models::chain_type::{ChainType, get_chain_type};
 use thiserror::Error;
 
 use erato::models::ChainId;
@@ -11,9 +10,7 @@ use uuid::Uuid;
 
 use crate::client::place_spot_order;
 use crate::generated::routes::requests::orders_place_spot_order::{
-    self, PlaceSpotOrderRequestOrderPairId, PlaceSpotOrderRequestOrderPairIdChainType,
-    PlaceSpotOrderRequestOrderPairIdPairType, PlaceSpotOrderRequestOrderTxPreset,
-    PlaceSpotOrderRequestOrderTxPresetMethod, PlaceSpotOrderRequestOrderWalletsItem,
+    self, PlaceSpotOrderRequestOrderTxPreset, PlaceSpotOrderRequestOrderTxPresetMethod,
 };
 use crate::session::transport::get_transport_key as get_transport_key_session;
 use crate::{Config, Session, messages};
@@ -102,7 +99,8 @@ pub async fn place_spot(
     side: &str,
     value: &u128,
     chain: &str,
-    pair: &str,
+    token_contract_address: Option<String>,
+    pair_contract_address: Option<String>,
     session: &Session,
     client: &crate::client::IrisClient,
 ) -> Result<(), OrdersError> {
@@ -116,25 +114,16 @@ pub async fn place_spot(
         _ => return Err(OrdersError::InvalidOrderSide(side.to_string())),
     };
 
-    let chain_id = get_chain_id(chain)?;
-    let ctype = get_chain_type(chain_id);
-    let chain_type = match ctype {
-        ChainType::EVM => PlaceSpotOrderRequestOrderPairIdChainType::Evm,
-        ChainType::SVM => PlaceSpotOrderRequestOrderPairIdChainType::Svm,
-    };
+    let chain_id = get_chain_id(chain)?.to_string();
 
     let request = orders_place_spot_order::PlaceSpotOrderRequest {
         envelope: STANDARD.encode(&envelope),
         order: orders_place_spot_order::PlaceSpotOrderRequestOrder {
+            chain_id,
+            pair_contract_address,
+            token_contract_address,
             amount: orders_place_spot_order::PlaceSpotOrderRequestOrderAmount::Native(value.to_string()),
             side,
-            exit_strategy_id: None,
-            pair_id: PlaceSpotOrderRequestOrderPairId {
-                chain_type,
-                pair_type: PlaceSpotOrderRequestOrderPairIdPairType::default(),
-                pair_chain_id: chain_id.to_string(),
-                pair_contract_address: pair.to_string(),
-            },
             tx_preset: PlaceSpotOrderRequestOrderTxPreset {
                 key: "a".to_string(),
                 method: PlaceSpotOrderRequestOrderTxPresetMethod::Normal,
@@ -143,9 +132,7 @@ pub async fn place_spot(
                 priority_gas: "0".to_string(),
                 slippage: "0".to_string(),
             },
-            wallets: [PlaceSpotOrderRequestOrderWalletsItem {
-                address: wallet_address,
-            }],
+            exit_strategy_id: None,
         },
     };
 

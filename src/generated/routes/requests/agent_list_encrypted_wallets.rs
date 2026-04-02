@@ -54,26 +54,33 @@ pub mod error {
 ///    "SVM"
 ///  ],
 ///  "additionalProperties": {
-///    "description": "Information about a wallet",
-///    "type": "object",
-///    "required": [
-///      "address",
-///      "name"
-///    ],
-///    "properties": {
-///      "address": {
-///        "description": "The blockchain address of the wallet",
-///        "type": "string",
-///        "name": "Wallet Address"
+///    "anyOf": [
+///      {
+///        "description": "Information about a wallet",
+///        "type": "object",
+///        "required": [
+///          "address",
+///          "name"
+///        ],
+///        "properties": {
+///          "address": {
+///            "description": "The blockchain address of the wallet",
+///            "type": "string",
+///            "name": "Wallet Address"
+///          },
+///          "name": {
+///            "description": "The human-readable name of the wallet",
+///            "type": "string",
+///            "name": "Wallet Name"
+///          }
+///        },
+///        "additionalProperties": false,
+///        "name": "Wallet Info"
 ///      },
-///      "name": {
-///        "description": "The human-readable name of the wallet",
-///        "type": "string",
-///        "name": "Wallet Name"
+///      {
+///        "type": "null"
 ///      }
-///    },
-///    "additionalProperties": false,
-///    "name": "Wallet Info"
+///    ]
 ///  },
 ///  "propertyNames": {
 ///    "description": "The blockchain type (EVM or SVM)",
@@ -97,7 +104,7 @@ pub struct ListEncryptedWalletsResponse {
     #[serde(flatten)]
     pub extra: ::std::collections::HashMap<
         ListEncryptedWalletsResponseExtraKey,
-        ListEncryptedWalletsResponseExtraValue,
+        ::std::option::Option<ListEncryptedWalletsResponseExtraValue>,
     >,
 }
 ///The blockchain type (EVM or SVM)

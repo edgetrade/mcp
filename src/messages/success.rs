@@ -38,6 +38,17 @@ pub fn wallets_list_header() {
 
 /// Success/Info: Wallet item
 pub fn wallet_item(chain: &str, address: &str, name: &str) {
+    match name.len() {
+        0 => wallet_item_no_name(chain, address),
+        _ => wallet_item_has_name(chain, address, name),
+    }
+}
+
+pub fn wallet_item_no_name(chain: &str, address: &str) {
+    println!("  {}: {}", chain, address);
+}
+
+pub fn wallet_item_has_name(chain: &str, address: &str, name: &str) {
     println!("  {}: {} ({})", chain, address, name);
 }
 

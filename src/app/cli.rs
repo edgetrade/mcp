@@ -142,8 +142,17 @@ pub enum OrderCommand {
         )]
         chain: String,
         /// Token contract address
-        #[arg(long, help = "The full contract address of the token to trade")]
-        token: String,
+        #[arg(
+            long,
+            help = "The full contract address of the token to trade: optional if pair is provided"
+        )]
+        token: Option<String>,
+        /// Pair contract address
+        #[arg(
+            long,
+            help = "The full contract address of the pair to trade: optional if token is provided"
+        )]
+        pair: Option<String>,
     },
 }
 

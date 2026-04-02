@@ -43,7 +43,8 @@ pub async fn handle_order(
             size,
             chain,
             token,
-        }) => orders::place_spot(side, size, chain, token, session, client)
+            pair,
+        }) => orders::place_spot(side, size, chain, token.clone(), pair.clone(), session, client)
             .await
             .map_err(PoseidonError::from),
         None => {
