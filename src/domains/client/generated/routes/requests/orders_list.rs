@@ -15,12 +15,18 @@ pub mod error {
     pub struct ConversionError(::std::borrow::Cow<'static, str>);
     impl ::std::error::Error for ConversionError {}
     impl ::std::fmt::Display for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Display::fmt(&self.0, f)
         }
     }
     impl ::std::fmt::Debug for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Debug::fmt(&self.0, f)
         }
     }
@@ -155,7 +161,11 @@ pub mod error {
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
 pub struct ListOrdersRequest {
     ///Filter by blockchain chain ID (e.g., "1" for Ethereum, "8453" for Base, "solana" for Solana)
-    #[serde(rename = "chainId", default, skip_serializing_if = "::std::option::Option::is_none")]
+    #[serde(
+        rename = "chainId",
+        default,
+        skip_serializing_if = "::std::option::Option::is_none"
+    )]
     pub chain_id: ::std::option::Option<::std::string::String>,
     ///Opaque cursor for pagination. Pass the value from a previous response to get the next page.
     #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
@@ -187,7 +197,11 @@ pub struct ListOrdersRequest {
     #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
     pub status: ::std::option::Option<ListOrdersRequestStatus>,
     ///Filter by specific task IDs
-    #[serde(rename = "taskIds", default, skip_serializing_if = "::std::vec::Vec::is_empty")]
+    #[serde(
+        rename = "taskIds",
+        default,
+        skip_serializing_if = "::std::vec::Vec::is_empty"
+    )]
     pub task_ids: ::std::vec::Vec<f64>,
     ///Filter by specific token contract addresses
     #[serde(
@@ -202,16 +216,24 @@ pub struct ListOrdersRequest {
         default,
         skip_serializing_if = "::std::option::Option::is_none"
     )]
-    pub triggered_at_end: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+    pub triggered_at_end: ::std::option::Option<
+        ::chrono::DateTime<::chrono::offset::Utc>,
+    >,
     ///Filter orders triggered on or after this timestamp (ISO 8601)
     #[serde(
         rename = "triggeredAtStart",
         default,
         skip_serializing_if = "::std::option::Option::is_none"
     )]
-    pub triggered_at_start: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+    pub triggered_at_start: ::std::option::Option<
+        ::chrono::DateTime<::chrono::offset::Utc>,
+    >,
     ///Filter by order type: "limit" or "spot"
-    #[serde(rename = "type", default, skip_serializing_if = "::std::option::Option::is_none")]
+    #[serde(
+        rename = "type",
+        default,
+        skip_serializing_if = "::std::option::Option::is_none"
+    )]
     pub type_: ::std::option::Option<ListOrdersRequestType>,
     ///Filter by specific wallet addresses associated with orders
     #[serde(default, skip_serializing_if = "::std::vec::Vec::is_empty")]
@@ -265,7 +287,18 @@ impl ::std::default::Default for ListOrdersRequest {
 ///}
 /// ```
 /// </details>
-#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd
+)]
 pub enum ListOrdersRequestStatus {
     Working,
     Canceled,
@@ -290,7 +323,9 @@ impl ::std::fmt::Display for ListOrdersRequestStatus {
 }
 impl ::std::str::FromStr for ListOrdersRequestStatus {
     type Err = self::error::ConversionError;
-    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn from_str(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         match value {
             "Working" => Ok(Self::Working),
             "Canceled" => Ok(Self::Canceled),
@@ -305,19 +340,25 @@ impl ::std::str::FromStr for ListOrdersRequestStatus {
 }
 impl ::std::convert::TryFrom<&str> for ListOrdersRequestStatus {
     type Error = self::error::ConversionError;
-    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
 impl ::std::convert::TryFrom<&::std::string::String> for ListOrdersRequestStatus {
     type Error = self::error::ConversionError;
-    fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
 impl ::std::convert::TryFrom<::std::string::String> for ListOrdersRequestStatus {
     type Error = self::error::ConversionError;
-    fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
@@ -337,7 +378,18 @@ impl ::std::convert::TryFrom<::std::string::String> for ListOrdersRequestStatus 
 ///}
 /// ```
 /// </details>
-#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd
+)]
 pub enum ListOrdersRequestType {
     #[serde(rename = "limit")]
     Limit,
@@ -354,7 +406,9 @@ impl ::std::fmt::Display for ListOrdersRequestType {
 }
 impl ::std::str::FromStr for ListOrdersRequestType {
     type Err = self::error::ConversionError;
-    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn from_str(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         match value {
             "limit" => Ok(Self::Limit),
             "spot" => Ok(Self::Spot),
@@ -364,19 +418,25 @@ impl ::std::str::FromStr for ListOrdersRequestType {
 }
 impl ::std::convert::TryFrom<&str> for ListOrdersRequestType {
     type Error = self::error::ConversionError;
-    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
 impl ::std::convert::TryFrom<&::std::string::String> for ListOrdersRequestType {
     type Error = self::error::ConversionError;
-    fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
 impl ::std::convert::TryFrom<::std::string::String> for ListOrdersRequestType {
     type Error = self::error::ConversionError;
-    fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
@@ -2014,7 +2074,18 @@ pub enum ListOrdersResponseItemsItemAmount {
 ///}
 /// ```
 /// </details>
-#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd
+)]
 pub enum ListOrdersResponseItemsItemSide {
     #[serde(rename = "buy")]
     Buy,
@@ -2031,7 +2102,9 @@ impl ::std::fmt::Display for ListOrdersResponseItemsItemSide {
 }
 impl ::std::str::FromStr for ListOrdersResponseItemsItemSide {
     type Err = self::error::ConversionError;
-    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn from_str(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         match value {
             "buy" => Ok(Self::Buy),
             "sell" => Ok(Self::Sell),
@@ -2041,19 +2114,26 @@ impl ::std::str::FromStr for ListOrdersResponseItemsItemSide {
 }
 impl ::std::convert::TryFrom<&str> for ListOrdersResponseItemsItemSide {
     type Error = self::error::ConversionError;
-    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<&::std::string::String> for ListOrdersResponseItemsItemSide {
+impl ::std::convert::TryFrom<&::std::string::String>
+for ListOrdersResponseItemsItemSide {
     type Error = self::error::ConversionError;
-    fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
 impl ::std::convert::TryFrom<::std::string::String> for ListOrdersResponseItemsItemSide {
     type Error = self::error::ConversionError;
-    fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
@@ -2078,7 +2158,18 @@ impl ::std::convert::TryFrom<::std::string::String> for ListOrdersResponseItemsI
 ///}
 /// ```
 /// </details>
-#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd
+)]
 pub enum ListOrdersResponseItemsItemStatus {
     Working,
     Canceled,
@@ -2103,7 +2194,9 @@ impl ::std::fmt::Display for ListOrdersResponseItemsItemStatus {
 }
 impl ::std::str::FromStr for ListOrdersResponseItemsItemStatus {
     type Err = self::error::ConversionError;
-    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn from_str(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         match value {
             "Working" => Ok(Self::Working),
             "Canceled" => Ok(Self::Canceled),
@@ -2118,19 +2211,27 @@ impl ::std::str::FromStr for ListOrdersResponseItemsItemStatus {
 }
 impl ::std::convert::TryFrom<&str> for ListOrdersResponseItemsItemStatus {
     type Error = self::error::ConversionError;
-    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<&::std::string::String> for ListOrdersResponseItemsItemStatus {
+impl ::std::convert::TryFrom<&::std::string::String>
+for ListOrdersResponseItemsItemStatus {
     type Error = self::error::ConversionError;
-    fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<::std::string::String> for ListOrdersResponseItemsItemStatus {
+impl ::std::convert::TryFrom<::std::string::String>
+for ListOrdersResponseItemsItemStatus {
     type Error = self::error::ConversionError;
-    fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
@@ -2435,7 +2536,9 @@ pub struct ListOrdersResponseItemsItemToken {
     #[serde(rename = "bestPairAddress")]
     pub best_pair_address: ::std::option::Option<::std::string::String>,
     #[serde(rename = "bestPairCounterToken")]
-    pub best_pair_counter_token: ::std::option::Option<ListOrdersResponseItemsItemTokenBestPairCounterToken>,
+    pub best_pair_counter_token: ::std::option::Option<
+        ListOrdersResponseItemsItemTokenBestPairCounterToken,
+    >,
     ///The timestamp when the best pair was created
     #[serde(rename = "bestPairCreatedAt")]
     pub best_pair_created_at: ::std::option::Option<::std::string::String>,
@@ -2633,7 +2736,18 @@ pub struct ListOrdersResponseItemsItemTokenSocialLinksItem {
 ///}
 /// ```
 /// </details>
-#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd
+)]
 pub enum ListOrdersResponseItemsItemTokenSocialLinksItemPlatform {
     None,
     Discord,
@@ -2676,7 +2790,9 @@ impl ::std::fmt::Display for ListOrdersResponseItemsItemTokenSocialLinksItemPlat
 }
 impl ::std::str::FromStr for ListOrdersResponseItemsItemTokenSocialLinksItemPlatform {
     type Err = self::error::ConversionError;
-    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn from_str(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         match value {
             "None" => Ok(Self::None),
             "Discord" => Ok(Self::Discord),
@@ -2698,21 +2814,30 @@ impl ::std::str::FromStr for ListOrdersResponseItemsItemTokenSocialLinksItemPlat
         }
     }
 }
-impl ::std::convert::TryFrom<&str> for ListOrdersResponseItemsItemTokenSocialLinksItemPlatform {
+impl ::std::convert::TryFrom<&str>
+for ListOrdersResponseItemsItemTokenSocialLinksItemPlatform {
     type Error = self::error::ConversionError;
-    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<&::std::string::String> for ListOrdersResponseItemsItemTokenSocialLinksItemPlatform {
+impl ::std::convert::TryFrom<&::std::string::String>
+for ListOrdersResponseItemsItemTokenSocialLinksItemPlatform {
     type Error = self::error::ConversionError;
-    fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<::std::string::String> for ListOrdersResponseItemsItemTokenSocialLinksItemPlatform {
+impl ::std::convert::TryFrom<::std::string::String>
+for ListOrdersResponseItemsItemTokenSocialLinksItemPlatform {
     type Error = self::error::ConversionError;
-    fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
@@ -2732,7 +2857,18 @@ impl ::std::convert::TryFrom<::std::string::String> for ListOrdersResponseItemsI
 ///}
 /// ```
 /// </details>
-#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd
+)]
 pub enum ListOrdersResponseItemsItemType {
     #[serde(rename = "limit")]
     Limit,
@@ -2749,7 +2885,9 @@ impl ::std::fmt::Display for ListOrdersResponseItemsItemType {
 }
 impl ::std::str::FromStr for ListOrdersResponseItemsItemType {
     type Err = self::error::ConversionError;
-    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn from_str(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         match value {
             "limit" => Ok(Self::Limit),
             "spot" => Ok(Self::Spot),
@@ -2759,19 +2897,26 @@ impl ::std::str::FromStr for ListOrdersResponseItemsItemType {
 }
 impl ::std::convert::TryFrom<&str> for ListOrdersResponseItemsItemType {
     type Error = self::error::ConversionError;
-    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<&::std::string::String> for ListOrdersResponseItemsItemType {
+impl ::std::convert::TryFrom<&::std::string::String>
+for ListOrdersResponseItemsItemType {
     type Error = self::error::ConversionError;
-    fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
 impl ::std::convert::TryFrom<::std::string::String> for ListOrdersResponseItemsItemType {
     type Error = self::error::ConversionError;
-    fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }

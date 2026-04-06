@@ -15,12 +15,18 @@ pub mod error {
     pub struct ConversionError(::std::borrow::Cow<'static, str>);
     impl ::std::error::Error for ConversionError {}
     impl ::std::fmt::Display for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Display::fmt(&self.0, f)
         }
     }
     impl ::std::fmt::Debug for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Debug::fmt(&self.0, f)
         }
     }
@@ -170,7 +176,11 @@ pub mod error {
 /// </details>
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
 pub struct WalletSwapsRequest {
-    #[serde(rename = "chainId", default, skip_serializing_if = "::std::option::Option::is_none")]
+    #[serde(
+        rename = "chainId",
+        default,
+        skip_serializing_if = "::std::option::Option::is_none"
+    )]
     pub chain_id: ::std::option::Option<WalletSwapsRequestChainId>,
     pub limit: f64,
     ///Wallet addresses to filter swaps by. Must be provided to retrieve swaps for a specific wallet — omitting it returns no results.
@@ -179,25 +189,33 @@ pub struct WalletSwapsRequest {
         default,
         skip_serializing_if = "::std::option::Option::is_none"
     )]
-    pub maker_addresses: ::std::option::Option<::std::vec::Vec<WalletSwapsRequestMakerAddressesItem>>,
+    pub maker_addresses: ::std::option::Option<
+        ::std::vec::Vec<WalletSwapsRequestMakerAddressesItem>,
+    >,
     #[serde(
         rename = "pairContractAddress",
         default,
         skip_serializing_if = "::std::option::Option::is_none"
     )]
-    pub pair_contract_address: ::std::option::Option<WalletSwapsRequestPairContractAddress>,
+    pub pair_contract_address: ::std::option::Option<
+        WalletSwapsRequestPairContractAddress,
+    >,
     #[serde(
         rename = "previousPairContractAddress",
         default,
         skip_serializing_if = "::std::option::Option::is_none"
     )]
-    pub previous_pair_contract_address: ::std::option::Option<WalletSwapsRequestPreviousPairContractAddress>,
+    pub previous_pair_contract_address: ::std::option::Option<
+        WalletSwapsRequestPreviousPairContractAddress,
+    >,
     #[serde(
         rename = "tokenContractAddress",
         default,
         skip_serializing_if = "::std::option::Option::is_none"
     )]
-    pub token_contract_address: ::std::option::Option<WalletSwapsRequestTokenContractAddress>,
+    pub token_contract_address: ::std::option::Option<
+        WalletSwapsRequestTokenContractAddress,
+    >,
 }
 ///`WalletSwapsRequestChainId`
 ///
@@ -402,7 +420,9 @@ pub struct WalletSwapsRequestPreviousPairContractAddress {
     #[serde(flatten, default, skip_serializing_if = "::std::option::Option::is_none")]
     pub subtype_0: ::std::option::Option<::std::string::String>,
     #[serde(flatten, default, skip_serializing_if = "::std::option::Option::is_none")]
-    pub subtype_1: ::std::option::Option<WalletSwapsRequestPreviousPairContractAddressSubtype1>,
+    pub subtype_1: ::std::option::Option<
+        WalletSwapsRequestPreviousPairContractAddressSubtype1,
+    >,
 }
 impl ::std::default::Default for WalletSwapsRequestPreviousPairContractAddress {
     fn default() -> Self {

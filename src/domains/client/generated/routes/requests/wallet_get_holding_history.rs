@@ -15,12 +15,18 @@ pub mod error {
     pub struct ConversionError(::std::borrow::Cow<'static, str>);
     impl ::std::error::Error for ConversionError {}
     impl ::std::fmt::Display for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Display::fmt(&self.0, f)
         }
     }
     impl ::std::fmt::Debug for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Debug::fmt(&self.0, f)
         }
     }
@@ -169,7 +175,11 @@ pub mod error {
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
 pub struct WalletHistoryRequest {
     ///The chain ID to filter holdings by (e.g., "1" for Ethereum, "8453" for Base, "solana" for Solana). Optional.
-    #[serde(rename = "chainId", default, skip_serializing_if = "::std::option::Option::is_none")]
+    #[serde(
+        rename = "chainId",
+        default,
+        skip_serializing_if = "::std::option::Option::is_none"
+    )]
     pub chain_id: ::std::option::Option<::std::string::String>,
     ///Array of token contract addresses to exclude from results. Defaults to empty array.
     #[serde(
@@ -181,10 +191,18 @@ pub struct WalletHistoryRequest {
     ///The time resolution for holding history data: "day" or "hour"
     pub resolution: WalletHistoryRequestResolution,
     ///Array of signal filtering criteria. Optional.
-    #[serde(rename = "signalDetails", default, skip_serializing_if = "::std::vec::Vec::is_empty")]
+    #[serde(
+        rename = "signalDetails",
+        default,
+        skip_serializing_if = "::std::vec::Vec::is_empty"
+    )]
     pub signal_details: ::std::vec::Vec<WalletHistoryRequestSignalDetailsItem>,
     ///Array of wallet filtering criteria. Optional.
-    #[serde(rename = "walletDetails", default, skip_serializing_if = "::std::vec::Vec::is_empty")]
+    #[serde(
+        rename = "walletDetails",
+        default,
+        skip_serializing_if = "::std::vec::Vec::is_empty"
+    )]
     pub wallet_details: ::std::vec::Vec<WalletHistoryRequestWalletDetailsItem>,
 }
 ///The time resolution for holding history data: "day" or "hour"
@@ -203,7 +221,18 @@ pub struct WalletHistoryRequest {
 ///}
 /// ```
 /// </details>
-#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd
+)]
 pub enum WalletHistoryRequestResolution {
     #[serde(rename = "day")]
     Day,
@@ -220,7 +249,9 @@ impl ::std::fmt::Display for WalletHistoryRequestResolution {
 }
 impl ::std::str::FromStr for WalletHistoryRequestResolution {
     type Err = self::error::ConversionError;
-    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn from_str(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         match value {
             "day" => Ok(Self::Day),
             "hour" => Ok(Self::Hour),
@@ -230,19 +261,25 @@ impl ::std::str::FromStr for WalletHistoryRequestResolution {
 }
 impl ::std::convert::TryFrom<&str> for WalletHistoryRequestResolution {
     type Error = self::error::ConversionError;
-    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
 impl ::std::convert::TryFrom<&::std::string::String> for WalletHistoryRequestResolution {
     type Error = self::error::ConversionError;
-    fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
 impl ::std::convert::TryFrom<::std::string::String> for WalletHistoryRequestResolution {
     type Error = self::error::ConversionError;
-    fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
@@ -293,7 +330,11 @@ impl ::std::convert::TryFrom<::std::string::String> for WalletHistoryRequestReso
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
 pub struct WalletHistoryRequestSignalDetailsItem {
     ///End date for signal filtering (ISO 8601 datetime). Optional.
-    #[serde(rename = "endDate", default, skip_serializing_if = "::std::option::Option::is_none")]
+    #[serde(
+        rename = "endDate",
+        default,
+        skip_serializing_if = "::std::option::Option::is_none"
+    )]
     pub end_date: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
     ///Unique identifier for the signal (UUID format)
     #[serde(rename = "signalId")]
@@ -349,7 +390,11 @@ pub struct WalletHistoryRequestSignalDetailsItem {
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
 pub struct WalletHistoryRequestWalletDetailsItem {
     ///End date for wallet filtering (ISO 8601 datetime). Optional.
-    #[serde(rename = "endDate", default, skip_serializing_if = "::std::option::Option::is_none")]
+    #[serde(
+        rename = "endDate",
+        default,
+        skip_serializing_if = "::std::option::Option::is_none"
+    )]
     pub end_date: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
     ///Start date for wallet filtering (ISO 8601 datetime)
     #[serde(rename = "startDate")]

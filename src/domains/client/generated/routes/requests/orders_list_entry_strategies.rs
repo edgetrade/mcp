@@ -15,12 +15,18 @@ pub mod error {
     pub struct ConversionError(::std::borrow::Cow<'static, str>);
     impl ::std::error::Error for ConversionError {}
     impl ::std::fmt::Display for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Display::fmt(&self.0, f)
         }
     }
     impl ::std::fmt::Debug for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Debug::fmt(&self.0, f)
         }
     }
@@ -135,7 +141,9 @@ pub struct ListEntryStrategiesResponseItem {
     pub execution_count: f64,
     ///The timestamp of the last execution of this entry strategy, if any.
     #[serde(rename = "lastExecutionDate")]
-    pub last_execution_date: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+    pub last_execution_date: ::std::option::Option<
+        ::chrono::DateTime<::chrono::offset::Utc>,
+    >,
     ///The name of the entry strategy.
     pub name: ::std::string::String,
     ///The steps in the entry strategy.

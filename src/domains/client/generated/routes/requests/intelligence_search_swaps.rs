@@ -15,12 +15,18 @@ pub mod error {
     pub struct ConversionError(::std::borrow::Cow<'static, str>);
     impl ::std::error::Error for ConversionError {}
     impl ::std::fmt::Display for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Display::fmt(&self.0, f)
         }
     }
     impl ::std::fmt::Debug for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Debug::fmt(&self.0, f)
         }
     }
@@ -292,7 +298,18 @@ pub struct SearchSwapsResponseItem {
 ///}
 /// ```
 /// </details>
-#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd
+)]
 pub enum SearchSwapsResponseItemChainType {
     #[serde(rename = "EVM")]
     Evm,
@@ -309,7 +326,9 @@ impl ::std::fmt::Display for SearchSwapsResponseItemChainType {
 }
 impl ::std::str::FromStr for SearchSwapsResponseItemChainType {
     type Err = self::error::ConversionError;
-    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn from_str(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         match value {
             "EVM" => Ok(Self::Evm),
             "SVM" => Ok(Self::Svm),
@@ -319,19 +338,27 @@ impl ::std::str::FromStr for SearchSwapsResponseItemChainType {
 }
 impl ::std::convert::TryFrom<&str> for SearchSwapsResponseItemChainType {
     type Error = self::error::ConversionError;
-    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<&::std::string::String> for SearchSwapsResponseItemChainType {
+impl ::std::convert::TryFrom<&::std::string::String>
+for SearchSwapsResponseItemChainType {
     type Error = self::error::ConversionError;
-    fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<::std::string::String> for SearchSwapsResponseItemChainType {
+impl ::std::convert::TryFrom<::std::string::String>
+for SearchSwapsResponseItemChainType {
     type Error = self::error::ConversionError;
-    fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }

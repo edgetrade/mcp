@@ -15,12 +15,18 @@ pub mod error {
     pub struct ConversionError(::std::borrow::Cow<'static, str>);
     impl ::std::error::Error for ConversionError {}
     impl ::std::fmt::Display for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Display::fmt(&self.0, f)
         }
     }
     impl ::std::fmt::Debug for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Debug::fmt(&self.0, f)
         }
     }
@@ -529,7 +535,18 @@ pub enum PlaceSpotOrderRequestOrderAmount {
 ///}
 /// ```
 /// </details>
-#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd
+)]
 pub enum PlaceSpotOrderRequestOrderSide {
     #[serde(rename = "buy")]
     Buy,
@@ -546,7 +563,9 @@ impl ::std::fmt::Display for PlaceSpotOrderRequestOrderSide {
 }
 impl ::std::str::FromStr for PlaceSpotOrderRequestOrderSide {
     type Err = self::error::ConversionError;
-    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn from_str(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         match value {
             "buy" => Ok(Self::Buy),
             "sell" => Ok(Self::Sell),
@@ -556,19 +575,25 @@ impl ::std::str::FromStr for PlaceSpotOrderRequestOrderSide {
 }
 impl ::std::convert::TryFrom<&str> for PlaceSpotOrderRequestOrderSide {
     type Error = self::error::ConversionError;
-    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
 impl ::std::convert::TryFrom<&::std::string::String> for PlaceSpotOrderRequestOrderSide {
     type Error = self::error::ConversionError;
-    fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
 impl ::std::convert::TryFrom<::std::string::String> for PlaceSpotOrderRequestOrderSide {
     type Error = self::error::ConversionError;
-    fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
@@ -659,7 +684,18 @@ pub struct PlaceSpotOrderRequestOrderTxPreset {
 ///}
 /// ```
 /// </details>
-#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd
+)]
 pub enum PlaceSpotOrderRequestOrderTxPresetMethod {
     #[serde(rename = "flashbot")]
     Flashbot,
@@ -676,7 +712,9 @@ impl ::std::fmt::Display for PlaceSpotOrderRequestOrderTxPresetMethod {
 }
 impl ::std::str::FromStr for PlaceSpotOrderRequestOrderTxPresetMethod {
     type Err = self::error::ConversionError;
-    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn from_str(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         match value {
             "flashbot" => Ok(Self::Flashbot),
             "normal" => Ok(Self::Normal),
@@ -686,19 +724,27 @@ impl ::std::str::FromStr for PlaceSpotOrderRequestOrderTxPresetMethod {
 }
 impl ::std::convert::TryFrom<&str> for PlaceSpotOrderRequestOrderTxPresetMethod {
     type Error = self::error::ConversionError;
-    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<&::std::string::String> for PlaceSpotOrderRequestOrderTxPresetMethod {
+impl ::std::convert::TryFrom<&::std::string::String>
+for PlaceSpotOrderRequestOrderTxPresetMethod {
     type Error = self::error::ConversionError;
-    fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<::std::string::String> for PlaceSpotOrderRequestOrderTxPresetMethod {
+impl ::std::convert::TryFrom<::std::string::String>
+for PlaceSpotOrderRequestOrderTxPresetMethod {
     type Error = self::error::ConversionError;
-    fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
@@ -824,9 +870,13 @@ pub struct PlaceSpotOrderResponseItem {
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
 pub struct PlaceSpotOrderResponseItemTransactionsItem {
     #[serde(flatten, default, skip_serializing_if = "::std::option::Option::is_none")]
-    pub subtype_0: ::std::option::Option<PlaceSpotOrderResponseItemTransactionsItemSubtype0>,
+    pub subtype_0: ::std::option::Option<
+        PlaceSpotOrderResponseItemTransactionsItemSubtype0,
+    >,
     #[serde(flatten, default, skip_serializing_if = "::std::option::Option::is_none")]
-    pub subtype_1: ::std::option::Option<PlaceSpotOrderResponseItemTransactionsItemSubtype1>,
+    pub subtype_1: ::std::option::Option<
+        PlaceSpotOrderResponseItemTransactionsItemSubtype1,
+    >,
 }
 impl ::std::default::Default for PlaceSpotOrderResponseItemTransactionsItem {
     fn default() -> Self {

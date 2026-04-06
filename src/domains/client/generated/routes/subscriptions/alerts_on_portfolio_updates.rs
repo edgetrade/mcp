@@ -15,12 +15,18 @@ pub mod error {
     pub struct ConversionError(::std::borrow::Cow<'static, str>);
     impl ::std::error::Error for ConversionError {}
     impl ::std::fmt::Display for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Display::fmt(&self.0, f)
         }
     }
     impl ::std::fmt::Debug for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Debug::fmt(&self.0, f)
         }
     }
@@ -77,7 +83,11 @@ pub mod error {
 /// </details>
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
 pub struct OnPortfolioUpdatesRequest {
-    #[serde(rename = "chainId", default, skip_serializing_if = "::std::option::Option::is_none")]
+    #[serde(
+        rename = "chainId",
+        default,
+        skip_serializing_if = "::std::option::Option::is_none"
+    )]
     pub chain_id: ::std::option::Option<OnPortfolioUpdatesRequestChainId>,
     #[serde(rename = "walletAddress")]
     pub wallet_address: OnPortfolioUpdatesRequestWalletAddress,

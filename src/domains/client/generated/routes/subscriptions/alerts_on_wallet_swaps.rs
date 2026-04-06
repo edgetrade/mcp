@@ -15,12 +15,18 @@ pub mod error {
     pub struct ConversionError(::std::borrow::Cow<'static, str>);
     impl ::std::error::Error for ConversionError {}
     impl ::std::fmt::Display for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Display::fmt(&self.0, f)
         }
     }
     impl ::std::fmt::Debug for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Debug::fmt(&self.0, f)
         }
     }
@@ -102,7 +108,9 @@ pub struct OnWalletSwapsRequestWalletAddressesItem {
     #[serde(flatten, default, skip_serializing_if = "::std::option::Option::is_none")]
     pub subtype_0: ::std::option::Option<::std::string::String>,
     #[serde(flatten, default, skip_serializing_if = "::std::option::Option::is_none")]
-    pub subtype_1: ::std::option::Option<OnWalletSwapsRequestWalletAddressesItemSubtype1>,
+    pub subtype_1: ::std::option::Option<
+        OnWalletSwapsRequestWalletAddressesItemSubtype1,
+    >,
 }
 impl ::std::default::Default for OnWalletSwapsRequestWalletAddressesItem {
     fn default() -> Self {

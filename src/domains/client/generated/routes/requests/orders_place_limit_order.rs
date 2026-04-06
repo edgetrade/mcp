@@ -15,12 +15,18 @@ pub mod error {
     pub struct ConversionError(::std::borrow::Cow<'static, str>);
     impl ::std::error::Error for ConversionError {}
     impl ::std::fmt::Display for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Display::fmt(&self.0, f)
         }
     }
     impl ::std::fmt::Debug for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Debug::fmt(&self.0, f)
         }
     }
@@ -634,7 +640,18 @@ pub struct PlaceLimitOrderRequestOrderAmount {
 ///}
 /// ```
 /// </details>
-#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd
+)]
 pub enum PlaceLimitOrderRequestOrderAmountType {
     #[serde(rename = "native")]
     Native,
@@ -654,7 +671,9 @@ impl ::std::fmt::Display for PlaceLimitOrderRequestOrderAmountType {
 }
 impl ::std::str::FromStr for PlaceLimitOrderRequestOrderAmountType {
     type Err = self::error::ConversionError;
-    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn from_str(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         match value {
             "native" => Ok(Self::Native),
             "token" => Ok(Self::Token),
@@ -665,19 +684,27 @@ impl ::std::str::FromStr for PlaceLimitOrderRequestOrderAmountType {
 }
 impl ::std::convert::TryFrom<&str> for PlaceLimitOrderRequestOrderAmountType {
     type Error = self::error::ConversionError;
-    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<&::std::string::String> for PlaceLimitOrderRequestOrderAmountType {
+impl ::std::convert::TryFrom<&::std::string::String>
+for PlaceLimitOrderRequestOrderAmountType {
     type Error = self::error::ConversionError;
-    fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<::std::string::String> for PlaceLimitOrderRequestOrderAmountType {
+impl ::std::convert::TryFrom<::std::string::String>
+for PlaceLimitOrderRequestOrderAmountType {
     type Error = self::error::ConversionError;
-    fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
@@ -697,7 +724,18 @@ impl ::std::convert::TryFrom<::std::string::String> for PlaceLimitOrderRequestOr
 ///}
 /// ```
 /// </details>
-#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd
+)]
 pub enum PlaceLimitOrderRequestOrderSide {
     #[serde(rename = "buy")]
     Buy,
@@ -714,7 +752,9 @@ impl ::std::fmt::Display for PlaceLimitOrderRequestOrderSide {
 }
 impl ::std::str::FromStr for PlaceLimitOrderRequestOrderSide {
     type Err = self::error::ConversionError;
-    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn from_str(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         match value {
             "buy" => Ok(Self::Buy),
             "sell" => Ok(Self::Sell),
@@ -724,19 +764,26 @@ impl ::std::str::FromStr for PlaceLimitOrderRequestOrderSide {
 }
 impl ::std::convert::TryFrom<&str> for PlaceLimitOrderRequestOrderSide {
     type Error = self::error::ConversionError;
-    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<&::std::string::String> for PlaceLimitOrderRequestOrderSide {
+impl ::std::convert::TryFrom<&::std::string::String>
+for PlaceLimitOrderRequestOrderSide {
     type Error = self::error::ConversionError;
-    fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
 impl ::std::convert::TryFrom<::std::string::String> for PlaceLimitOrderRequestOrderSide {
     type Error = self::error::ConversionError;
-    fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
@@ -806,7 +853,18 @@ pub struct PlaceLimitOrderRequestOrderTokenId {
 ///}
 /// ```
 /// </details>
-#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd
+)]
 pub enum PlaceLimitOrderRequestOrderTokenIdChainType {
     #[serde(rename = "EVM")]
     Evm,
@@ -823,7 +881,9 @@ impl ::std::fmt::Display for PlaceLimitOrderRequestOrderTokenIdChainType {
 }
 impl ::std::str::FromStr for PlaceLimitOrderRequestOrderTokenIdChainType {
     type Err = self::error::ConversionError;
-    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn from_str(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         match value {
             "EVM" => Ok(Self::Evm),
             "SVM" => Ok(Self::Svm),
@@ -833,19 +893,27 @@ impl ::std::str::FromStr for PlaceLimitOrderRequestOrderTokenIdChainType {
 }
 impl ::std::convert::TryFrom<&str> for PlaceLimitOrderRequestOrderTokenIdChainType {
     type Error = self::error::ConversionError;
-    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<&::std::string::String> for PlaceLimitOrderRequestOrderTokenIdChainType {
+impl ::std::convert::TryFrom<&::std::string::String>
+for PlaceLimitOrderRequestOrderTokenIdChainType {
     type Error = self::error::ConversionError;
-    fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<::std::string::String> for PlaceLimitOrderRequestOrderTokenIdChainType {
+impl ::std::convert::TryFrom<::std::string::String>
+for PlaceLimitOrderRequestOrderTokenIdChainType {
     type Error = self::error::ConversionError;
-    fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
@@ -945,7 +1013,18 @@ pub struct PlaceLimitOrderRequestOrderTxPreset {
 ///}
 /// ```
 /// </details>
-#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd
+)]
 pub enum PlaceLimitOrderRequestOrderTxPresetKey {
     #[serde(rename = "a")]
     A,
@@ -968,7 +1047,9 @@ impl ::std::fmt::Display for PlaceLimitOrderRequestOrderTxPresetKey {
 }
 impl ::std::str::FromStr for PlaceLimitOrderRequestOrderTxPresetKey {
     type Err = self::error::ConversionError;
-    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn from_str(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         match value {
             "a" => Ok(Self::A),
             "b" => Ok(Self::B),
@@ -980,19 +1061,27 @@ impl ::std::str::FromStr for PlaceLimitOrderRequestOrderTxPresetKey {
 }
 impl ::std::convert::TryFrom<&str> for PlaceLimitOrderRequestOrderTxPresetKey {
     type Error = self::error::ConversionError;
-    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<&::std::string::String> for PlaceLimitOrderRequestOrderTxPresetKey {
+impl ::std::convert::TryFrom<&::std::string::String>
+for PlaceLimitOrderRequestOrderTxPresetKey {
     type Error = self::error::ConversionError;
-    fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<::std::string::String> for PlaceLimitOrderRequestOrderTxPresetKey {
+impl ::std::convert::TryFrom<::std::string::String>
+for PlaceLimitOrderRequestOrderTxPresetKey {
     type Error = self::error::ConversionError;
-    fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
@@ -1012,7 +1101,18 @@ impl ::std::convert::TryFrom<::std::string::String> for PlaceLimitOrderRequestOr
 ///}
 /// ```
 /// </details>
-#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd
+)]
 pub enum PlaceLimitOrderRequestOrderTxPresetMethod {
     #[serde(rename = "normal")]
     Normal,
@@ -1029,7 +1129,9 @@ impl ::std::fmt::Display for PlaceLimitOrderRequestOrderTxPresetMethod {
 }
 impl ::std::str::FromStr for PlaceLimitOrderRequestOrderTxPresetMethod {
     type Err = self::error::ConversionError;
-    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn from_str(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         match value {
             "normal" => Ok(Self::Normal),
             "flashbot" => Ok(Self::Flashbot),
@@ -1039,19 +1141,27 @@ impl ::std::str::FromStr for PlaceLimitOrderRequestOrderTxPresetMethod {
 }
 impl ::std::convert::TryFrom<&str> for PlaceLimitOrderRequestOrderTxPresetMethod {
     type Error = self::error::ConversionError;
-    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<&::std::string::String> for PlaceLimitOrderRequestOrderTxPresetMethod {
+impl ::std::convert::TryFrom<&::std::string::String>
+for PlaceLimitOrderRequestOrderTxPresetMethod {
     type Error = self::error::ConversionError;
-    fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<::std::string::String> for PlaceLimitOrderRequestOrderTxPresetMethod {
+impl ::std::convert::TryFrom<::std::string::String>
+for PlaceLimitOrderRequestOrderTxPresetMethod {
     type Error = self::error::ConversionError;
-    fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
@@ -1859,7 +1969,18 @@ pub struct PlaceLimitOrderResponseItemAmount {
 ///}
 /// ```
 /// </details>
-#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd
+)]
 pub enum PlaceLimitOrderResponseItemAmountType {
     #[serde(rename = "native")]
     Native,
@@ -1879,7 +2000,9 @@ impl ::std::fmt::Display for PlaceLimitOrderResponseItemAmountType {
 }
 impl ::std::str::FromStr for PlaceLimitOrderResponseItemAmountType {
     type Err = self::error::ConversionError;
-    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn from_str(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         match value {
             "native" => Ok(Self::Native),
             "token" => Ok(Self::Token),
@@ -1890,19 +2013,27 @@ impl ::std::str::FromStr for PlaceLimitOrderResponseItemAmountType {
 }
 impl ::std::convert::TryFrom<&str> for PlaceLimitOrderResponseItemAmountType {
     type Error = self::error::ConversionError;
-    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<&::std::string::String> for PlaceLimitOrderResponseItemAmountType {
+impl ::std::convert::TryFrom<&::std::string::String>
+for PlaceLimitOrderResponseItemAmountType {
     type Error = self::error::ConversionError;
-    fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<::std::string::String> for PlaceLimitOrderResponseItemAmountType {
+impl ::std::convert::TryFrom<::std::string::String>
+for PlaceLimitOrderResponseItemAmountType {
     type Error = self::error::ConversionError;
-    fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
@@ -2211,7 +2342,9 @@ pub struct PlaceLimitOrderResponseItemToken {
     #[serde(rename = "bestPairAddress")]
     pub best_pair_address: ::std::option::Option<::std::string::String>,
     #[serde(rename = "bestPairCounterToken")]
-    pub best_pair_counter_token: ::std::option::Option<PlaceLimitOrderResponseItemTokenBestPairCounterToken>,
+    pub best_pair_counter_token: ::std::option::Option<
+        PlaceLimitOrderResponseItemTokenBestPairCounterToken,
+    >,
     ///The timestamp when the best pair was created
     #[serde(rename = "bestPairCreatedAt")]
     pub best_pair_created_at: ::std::option::Option<::std::string::String>,

@@ -15,12 +15,18 @@ pub mod error {
     pub struct ConversionError(::std::borrow::Cow<'static, str>);
     impl ::std::error::Error for ConversionError {}
     impl ::std::fmt::Display for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Display::fmt(&self.0, f)
         }
     }
     impl ::std::fmt::Debug for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Debug::fmt(&self.0, f)
         }
     }
@@ -385,14 +391,18 @@ pub struct WalletHoldingsRequestFilters {
         default,
         skip_serializing_if = "::std::option::Option::is_none"
     )]
-    pub min_most_recent_tx: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+    pub min_most_recent_tx: ::std::option::Option<
+        ::chrono::DateTime<::chrono::offset::Utc>,
+    >,
     ///A specific token that must be included in the results
     #[serde(
         rename = "mustIncludeToken",
         default,
         skip_serializing_if = "::std::option::Option::is_none"
     )]
-    pub must_include_token: ::std::option::Option<WalletHoldingsRequestFiltersMustIncludeToken>,
+    pub must_include_token: ::std::option::Option<
+        WalletHoldingsRequestFiltersMustIncludeToken,
+    >,
     ///Search text to filter tokens by name or symbol
     #[serde(
         rename = "searchText",
@@ -471,7 +481,18 @@ pub struct WalletHoldingsRequestFiltersMustIncludeToken {
 ///}
 /// ```
 /// </details>
-#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd
+)]
 pub enum WalletHoldingsRequestSortByColumn {
     #[serde(rename = "firstBuy")]
     FirstBuy,
@@ -521,7 +542,9 @@ impl ::std::fmt::Display for WalletHoldingsRequestSortByColumn {
 }
 impl ::std::str::FromStr for WalletHoldingsRequestSortByColumn {
     type Err = self::error::ConversionError;
-    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn from_str(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         match value {
             "firstBuy" => Ok(Self::FirstBuy),
             "mostRecentTx" => Ok(Self::MostRecentTx),
@@ -542,19 +565,27 @@ impl ::std::str::FromStr for WalletHoldingsRequestSortByColumn {
 }
 impl ::std::convert::TryFrom<&str> for WalletHoldingsRequestSortByColumn {
     type Error = self::error::ConversionError;
-    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<&::std::string::String> for WalletHoldingsRequestSortByColumn {
+impl ::std::convert::TryFrom<&::std::string::String>
+for WalletHoldingsRequestSortByColumn {
     type Error = self::error::ConversionError;
-    fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<::std::string::String> for WalletHoldingsRequestSortByColumn {
+impl ::std::convert::TryFrom<::std::string::String>
+for WalletHoldingsRequestSortByColumn {
     type Error = self::error::ConversionError;
-    fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
@@ -580,7 +611,18 @@ impl ::std::default::Default for WalletHoldingsRequestSortByColumn {
 ///}
 /// ```
 /// </details>
-#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd
+)]
 pub enum WalletHoldingsRequestSortDirection {
     #[serde(rename = "asc")]
     Asc,
@@ -597,7 +639,9 @@ impl ::std::fmt::Display for WalletHoldingsRequestSortDirection {
 }
 impl ::std::str::FromStr for WalletHoldingsRequestSortDirection {
     type Err = self::error::ConversionError;
-    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn from_str(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         match value {
             "asc" => Ok(Self::Asc),
             "desc" => Ok(Self::Desc),
@@ -607,19 +651,27 @@ impl ::std::str::FromStr for WalletHoldingsRequestSortDirection {
 }
 impl ::std::convert::TryFrom<&str> for WalletHoldingsRequestSortDirection {
     type Error = self::error::ConversionError;
-    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<&::std::string::String> for WalletHoldingsRequestSortDirection {
+impl ::std::convert::TryFrom<&::std::string::String>
+for WalletHoldingsRequestSortDirection {
     type Error = self::error::ConversionError;
-    fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<::std::string::String> for WalletHoldingsRequestSortDirection {
+impl ::std::convert::TryFrom<::std::string::String>
+for WalletHoldingsRequestSortDirection {
     type Error = self::error::ConversionError;
-    fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }

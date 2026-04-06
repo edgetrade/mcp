@@ -15,12 +15,18 @@ pub mod error {
     pub struct ConversionError(::std::borrow::Cow<'static, str>);
     impl ::std::error::Error for ConversionError {}
     impl ::std::fmt::Display for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Display::fmt(&self.0, f)
         }
     }
     impl ::std::fmt::Debug for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Debug::fmt(&self.0, f)
         }
     }
@@ -863,7 +869,18 @@ pub struct OrderResponseAmount {
 ///}
 /// ```
 /// </details>
-#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd
+)]
 pub enum OrderResponseAmountType {
     #[serde(rename = "native")]
     Native,
@@ -883,7 +900,9 @@ impl ::std::fmt::Display for OrderResponseAmountType {
 }
 impl ::std::str::FromStr for OrderResponseAmountType {
     type Err = self::error::ConversionError;
-    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn from_str(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         match value {
             "native" => Ok(Self::Native),
             "token" => Ok(Self::Token),
@@ -894,19 +913,25 @@ impl ::std::str::FromStr for OrderResponseAmountType {
 }
 impl ::std::convert::TryFrom<&str> for OrderResponseAmountType {
     type Error = self::error::ConversionError;
-    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
 impl ::std::convert::TryFrom<&::std::string::String> for OrderResponseAmountType {
     type Error = self::error::ConversionError;
-    fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
 impl ::std::convert::TryFrom<::std::string::String> for OrderResponseAmountType {
     type Error = self::error::ConversionError;
-    fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
@@ -1222,7 +1247,9 @@ pub struct OrderResponseToken {
     pub best_pair_address: ::std::option::Option<::std::string::String>,
     ///The counter token of the best pair
     #[serde(rename = "bestPairCounterToken")]
-    pub best_pair_counter_token: ::std::option::Option<OrderResponseTokenBestPairCounterToken>,
+    pub best_pair_counter_token: ::std::option::Option<
+        OrderResponseTokenBestPairCounterToken,
+    >,
     ///The timestamp when the best pair was created
     #[serde(rename = "bestPairCreatedAt")]
     pub best_pair_created_at: ::std::option::Option<::std::string::String>,

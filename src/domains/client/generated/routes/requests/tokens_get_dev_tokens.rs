@@ -15,12 +15,18 @@ pub mod error {
     pub struct ConversionError(::std::borrow::Cow<'static, str>);
     impl ::std::error::Error for ConversionError {}
     impl ::std::fmt::Display for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Display::fmt(&self.0, f)
         }
     }
     impl ::std::fmt::Debug for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Debug::fmt(&self.0, f)
         }
     }
@@ -357,7 +363,9 @@ pub struct TokenDevTokensResponseItem {
     pub best_pair_address: ::std::option::Option<::std::string::String>,
     ///Counter token details in the best pair
     #[serde(rename = "bestPairCounterToken")]
-    pub best_pair_counter_token: ::std::option::Option<TokenDevTokensResponseItemBestPairCounterToken>,
+    pub best_pair_counter_token: ::std::option::Option<
+        TokenDevTokensResponseItemBestPairCounterToken,
+    >,
     ///ISO timestamp when the best pair was created
     #[serde(rename = "bestPairCreatedAt")]
     pub best_pair_created_at: ::std::option::Option<::std::string::String>,

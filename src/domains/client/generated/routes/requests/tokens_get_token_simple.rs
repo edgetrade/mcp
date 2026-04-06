@@ -15,12 +15,18 @@ pub mod error {
     pub struct ConversionError(::std::borrow::Cow<'static, str>);
     impl ::std::error::Error for ConversionError {}
     impl ::std::fmt::Display for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Display::fmt(&self.0, f)
         }
     }
     impl ::std::fmt::Debug for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Debug::fmt(&self.0, f)
         }
     }
@@ -1560,7 +1566,9 @@ pub struct TokenInfoWithPricingResponsePair {
     #[serde(rename = "fundraisingTarget")]
     pub fundraising_target: ::std::option::Option<::std::string::String>,
     #[serde(rename = "graduatedFromPair")]
-    pub graduated_from_pair: ::std::option::Option<TokenInfoWithPricingResponsePairGraduatedFromPair>,
+    pub graduated_from_pair: ::std::option::Option<
+        TokenInfoWithPricingResponsePairGraduatedFromPair,
+    >,
     #[serde(rename = "isNativeTokenReferencePair")]
     pub is_native_token_reference_pair: bool,
     #[serde(rename = "liquidityUsd")]
@@ -1570,7 +1578,9 @@ pub struct TokenInfoWithPricingResponsePair {
     #[serde(rename = "marketcapUsd")]
     pub marketcap_usd: ::std::option::Option<f64>,
     #[serde(rename = "migratedToPair")]
-    pub migrated_to_pair: ::std::option::Option<TokenInfoWithPricingResponsePairMigratedToPair>,
+    pub migrated_to_pair: ::std::option::Option<
+        TokenInfoWithPricingResponsePairMigratedToPair,
+    >,
     #[serde(rename = "pairChainId")]
     pub pair_chain_id: ::std::string::String,
     #[serde(rename = "pairContractAddress")]
@@ -3224,10 +3234,16 @@ pub struct TokenInfoWithPricingResponseToken {
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct TokenInfoWithPricingResponseTokenDetails {
-    pub contract: ::std::option::Option<TokenInfoWithPricingResponseTokenDetailsContract>,
-    pub deployer: ::std::option::Option<TokenInfoWithPricingResponseTokenDetailsDeployer>,
+    pub contract: ::std::option::Option<
+        TokenInfoWithPricingResponseTokenDetailsContract,
+    >,
+    pub deployer: ::std::option::Option<
+        TokenInfoWithPricingResponseTokenDetailsDeployer,
+    >,
     #[serde(rename = "holderDistribution")]
-    pub holder_distribution: ::std::option::Option<TokenInfoWithPricingResponseTokenDetailsHolderDistribution>,
+    pub holder_distribution: ::std::option::Option<
+        TokenInfoWithPricingResponseTokenDetailsHolderDistribution,
+    >,
     #[serde(
         rename = "safetyReports",
         default,
@@ -3235,7 +3251,9 @@ pub struct TokenInfoWithPricingResponseTokenDetails {
     )]
     pub safety_reports: ::std::option::Option<::std::vec::Vec<::std::string::String>>,
     pub social: ::std::option::Option<TokenInfoWithPricingResponseTokenDetailsSocial>,
-    pub transactions: ::std::option::Option<TokenInfoWithPricingResponseTokenDetailsTransactions>,
+    pub transactions: ::std::option::Option<
+        TokenInfoWithPricingResponseTokenDetailsTransactions,
+    >,
 }
 ///`TokenInfoWithPricingResponseTokenDetailsContract`
 ///
@@ -3318,7 +3336,9 @@ pub struct TokenInfoWithPricingResponseTokenDetailsContract {
     #[serde(rename = "byteCode")]
     pub byte_code: ::std::option::Option<::std::string::String>,
     #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-    pub refresh: ::std::option::Option<TokenInfoWithPricingResponseTokenDetailsContractRefresh>,
+    pub refresh: ::std::option::Option<
+        TokenInfoWithPricingResponseTokenDetailsContractRefresh,
+    >,
     #[serde(rename = "sourceCodeS3Key")]
     pub source_code_s3_key: ::std::option::Option<::std::string::String>,
     pub verified: ::std::option::Option<bool>,
@@ -3515,7 +3535,8 @@ pub struct TokenInfoWithPricingResponseTokenDetailsHolderDistribution {
     )]
     pub top50_balance: ::std::option::Option<::std::string::String>,
 }
-impl ::std::default::Default for TokenInfoWithPricingResponseTokenDetailsHolderDistribution {
+impl ::std::default::Default
+for TokenInfoWithPricingResponseTokenDetailsHolderDistribution {
     fn default() -> Self {
         Self {
             insiders_balance: Default::default(),
@@ -3936,23 +3957,33 @@ impl ::std::default::Default for TokenInfoWithPricingResponseTokenDetailsHolderD
 #[serde(deny_unknown_fields)]
 pub struct TokenInfoWithPricingResponseTokenDetailsSocial {
     #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-    pub dexscreener: ::std::option::Option<TokenInfoWithPricingResponseTokenDetailsSocialDexscreener>,
+    pub dexscreener: ::std::option::Option<
+        TokenInfoWithPricingResponseTokenDetailsSocialDexscreener,
+    >,
     #[serde(
         rename = "dexscreenerPaid",
         default,
         skip_serializing_if = "::std::option::Option::is_none"
     )]
-    pub dexscreener_paid: ::std::option::Option<TokenInfoWithPricingResponseTokenDetailsSocialDexscreenerPaid>,
+    pub dexscreener_paid: ::std::option::Option<
+        TokenInfoWithPricingResponseTokenDetailsSocialDexscreenerPaid,
+    >,
     #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-    pub gecko: ::std::option::Option<TokenInfoWithPricingResponseTokenDetailsSocialGecko>,
+    pub gecko: ::std::option::Option<
+        TokenInfoWithPricingResponseTokenDetailsSocialGecko,
+    >,
     #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-    pub metaplex: ::std::option::Option<TokenInfoWithPricingResponseTokenDetailsSocialMetaplex>,
+    pub metaplex: ::std::option::Option<
+        TokenInfoWithPricingResponseTokenDetailsSocialMetaplex,
+    >,
     #[serde(
         rename = "twitterProfile",
         default,
         skip_serializing_if = "::std::option::Option::is_none"
     )]
-    pub twitter_profile: ::std::option::Option<TokenInfoWithPricingResponseTokenDetailsSocialTwitterProfile>,
+    pub twitter_profile: ::std::option::Option<
+        TokenInfoWithPricingResponseTokenDetailsSocialTwitterProfile,
+    >,
 }
 impl ::std::default::Default for TokenInfoWithPricingResponseTokenDetailsSocial {
     fn default() -> Self {
@@ -4038,13 +4069,22 @@ pub struct TokenInfoWithPricingResponseTokenDetailsSocialDexscreener {
     #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
     pub description: ::std::option::Option<::std::string::String>,
     #[serde(default, skip_serializing_if = "::std::vec::Vec::is_empty")]
-    pub links: ::std::vec::Vec<TokenInfoWithPricingResponseTokenDetailsSocialDexscreenerLinksItem>,
-    #[serde(rename = "logoUrl", default, skip_serializing_if = "::std::option::Option::is_none")]
+    pub links: ::std::vec::Vec<
+        TokenInfoWithPricingResponseTokenDetailsSocialDexscreenerLinksItem,
+    >,
+    #[serde(
+        rename = "logoUrl",
+        default,
+        skip_serializing_if = "::std::option::Option::is_none"
+    )]
     pub logo_url: ::std::option::Option<::std::string::String>,
     #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-    pub refresh: ::std::option::Option<TokenInfoWithPricingResponseTokenDetailsSocialDexscreenerRefresh>,
+    pub refresh: ::std::option::Option<
+        TokenInfoWithPricingResponseTokenDetailsSocialDexscreenerRefresh,
+    >,
 }
-impl ::std::default::Default for TokenInfoWithPricingResponseTokenDetailsSocialDexscreener {
+impl ::std::default::Default
+for TokenInfoWithPricingResponseTokenDetailsSocialDexscreener {
     fn default() -> Self {
         Self {
             banner_url: Default::default(),
@@ -4146,9 +4186,13 @@ pub struct TokenInfoWithPricingResponseTokenDetailsSocialDexscreenerLinksItem {
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
 #[serde(deny_unknown_fields)]
 pub struct TokenInfoWithPricingResponseTokenDetailsSocialDexscreenerPaid {
-    pub orders: ::std::vec::Vec<TokenInfoWithPricingResponseTokenDetailsSocialDexscreenerPaidOrdersItem>,
+    pub orders: ::std::vec::Vec<
+        TokenInfoWithPricingResponseTokenDetailsSocialDexscreenerPaidOrdersItem,
+    >,
     #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-    pub refresh: ::std::option::Option<TokenInfoWithPricingResponseTokenDetailsSocialDexscreenerPaidRefresh>,
+    pub refresh: ::std::option::Option<
+        TokenInfoWithPricingResponseTokenDetailsSocialDexscreenerPaidRefresh,
+    >,
 }
 ///`TokenInfoWithPricingResponseTokenDetailsSocialDexscreenerPaidOrdersItem`
 ///
@@ -4348,11 +4392,21 @@ pub struct TokenInfoWithPricingResponseTokenDetailsSocialGecko {
     #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
     pub description: ::std::option::Option<::std::string::String>,
     #[serde(default, skip_serializing_if = "::std::vec::Vec::is_empty")]
-    pub links: ::std::vec::Vec<TokenInfoWithPricingResponseTokenDetailsSocialGeckoLinksItem>,
-    #[serde(rename = "logoUrl", default, skip_serializing_if = "::std::option::Option::is_none")]
-    pub logo_url: ::std::option::Option<TokenInfoWithPricingResponseTokenDetailsSocialGeckoLogoUrl>,
+    pub links: ::std::vec::Vec<
+        TokenInfoWithPricingResponseTokenDetailsSocialGeckoLinksItem,
+    >,
+    #[serde(
+        rename = "logoUrl",
+        default,
+        skip_serializing_if = "::std::option::Option::is_none"
+    )]
+    pub logo_url: ::std::option::Option<
+        TokenInfoWithPricingResponseTokenDetailsSocialGeckoLogoUrl,
+    >,
     #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-    pub refresh: ::std::option::Option<TokenInfoWithPricingResponseTokenDetailsSocialGeckoRefresh>,
+    pub refresh: ::std::option::Option<
+        TokenInfoWithPricingResponseTokenDetailsSocialGeckoRefresh,
+    >,
 }
 impl ::std::default::Default for TokenInfoWithPricingResponseTokenDetailsSocialGecko {
     fn default() -> Self {
@@ -4540,13 +4594,21 @@ pub struct TokenInfoWithPricingResponseTokenDetailsSocialMetaplex {
     #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
     pub description: ::std::option::Option<::std::string::String>,
     #[serde(default, skip_serializing_if = "::std::vec::Vec::is_empty")]
-    pub links: ::std::vec::Vec<TokenInfoWithPricingResponseTokenDetailsSocialMetaplexLinksItem>,
-    #[serde(rename = "logoUrl", default, skip_serializing_if = "::std::option::Option::is_none")]
+    pub links: ::std::vec::Vec<
+        TokenInfoWithPricingResponseTokenDetailsSocialMetaplexLinksItem,
+    >,
+    #[serde(
+        rename = "logoUrl",
+        default,
+        skip_serializing_if = "::std::option::Option::is_none"
+    )]
     pub logo_url: ::std::option::Option<::std::string::String>,
     #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
     pub name: ::std::option::Option<::std::string::String>,
     #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-    pub refresh: ::std::option::Option<TokenInfoWithPricingResponseTokenDetailsSocialMetaplexRefresh>,
+    pub refresh: ::std::option::Option<
+        TokenInfoWithPricingResponseTokenDetailsSocialMetaplexRefresh,
+    >,
     #[serde(
         rename = "sellerFeeBasisPoints",
         default,
@@ -4763,16 +4825,23 @@ pub struct TokenInfoWithPricingResponseTokenDetailsSocialMetaplexRefresh {
 pub struct TokenInfoWithPricingResponseTokenDetailsSocialTwitterProfile {
     #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
     pub communities: ::std::option::Option<
-        ::std::vec::Vec<TokenInfoWithPricingResponseTokenDetailsSocialTwitterProfileCommunitiesItem>,
+        ::std::vec::Vec<
+            TokenInfoWithPricingResponseTokenDetailsSocialTwitterProfileCommunitiesItem,
+        >,
     >,
     #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
     pub profiles: ::std::option::Option<
-        ::std::vec::Vec<TokenInfoWithPricingResponseTokenDetailsSocialTwitterProfileProfilesItem>,
+        ::std::vec::Vec<
+            TokenInfoWithPricingResponseTokenDetailsSocialTwitterProfileProfilesItem,
+        >,
     >,
     #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
-    pub refresh: ::std::option::Option<TokenInfoWithPricingResponseTokenDetailsSocialTwitterProfileRefresh>,
+    pub refresh: ::std::option::Option<
+        TokenInfoWithPricingResponseTokenDetailsSocialTwitterProfileRefresh,
+    >,
 }
-impl ::std::default::Default for TokenInfoWithPricingResponseTokenDetailsSocialTwitterProfile {
+impl ::std::default::Default
+for TokenInfoWithPricingResponseTokenDetailsSocialTwitterProfile {
     fn default() -> Self {
         Self {
             communities: Default::default(),
@@ -5233,7 +5302,11 @@ pub struct TokenInfoWithPricingResponseTokenSummary {
         skip_serializing_if = "::std::option::Option::is_none"
     )]
     pub last_block_seen: ::std::option::Option<f64>,
-    #[serde(rename = "logoUrl", default, skip_serializing_if = "::std::option::Option::is_none")]
+    #[serde(
+        rename = "logoUrl",
+        default,
+        skip_serializing_if = "::std::option::Option::is_none"
+    )]
     pub logo_url: ::std::option::Option<::std::string::String>,
     #[serde(rename = "marketcapUsd")]
     pub marketcap_usd: f64,

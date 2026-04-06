@@ -15,12 +15,18 @@ pub mod error {
     pub struct ConversionError(::std::borrow::Cow<'static, str>);
     impl ::std::error::Error for ConversionError {}
     impl ::std::fmt::Display for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Display::fmt(&self.0, f)
         }
     }
     impl ::std::fmt::Debug for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Debug::fmt(&self.0, f)
         }
     }
@@ -98,7 +104,8 @@ impl ::std::convert::From<::std::vec::Vec<Schema0>> for Schema0 {
         Self::Array(value)
     }
 }
-impl ::std::convert::From<::std::collections::HashMap<::std::string::String, Schema0>> for Schema0 {
+impl ::std::convert::From<::std::collections::HashMap<::std::string::String, Schema0>>
+for Schema0 {
     fn from(value: ::std::collections::HashMap<::std::string::String, Schema0>) -> Self {
         Self::Object(value)
     }
@@ -235,7 +242,11 @@ impl ::std::convert::From<::std::collections::HashMap<::std::string::String, Sch
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
 pub struct SearchTokensRequest {
     ///Narrow to a specific chain. Omit to search all chains.
-    #[serde(rename = "chainId", default, skip_serializing_if = "::std::option::Option::is_none")]
+    #[serde(
+        rename = "chainId",
+        default,
+        skip_serializing_if = "::std::option::Option::is_none"
+    )]
     pub chain_id: ::std::option::Option<::std::string::String>,
     ///Filter to graduated (true) or pre-graduation (false) tokens only. Omit for all.
     #[serde(
@@ -572,7 +583,9 @@ pub struct SearchTokensResponseItem {
     pub pair_contract_address: ::std::option::Option<::std::string::String>,
     ///The timestamp of the creation of the pair.
     #[serde(rename = "pairCreatedAt")]
-    pub pair_created_at: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+    pub pair_created_at: ::std::option::Option<
+        ::chrono::DateTime<::chrono::offset::Utc>,
+    >,
     ///The type of the pair.
     #[serde(rename = "pairType")]
     pub pair_type: ::std::option::Option<::std::string::String>,

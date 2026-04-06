@@ -15,12 +15,18 @@ pub mod error {
     pub struct ConversionError(::std::borrow::Cow<'static, str>);
     impl ::std::error::Error for ConversionError {}
     impl ::std::fmt::Display for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Display::fmt(&self.0, f)
         }
     }
     impl ::std::fmt::Debug for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Debug::fmt(&self.0, f)
         }
     }
@@ -234,7 +240,9 @@ pub struct WalletSummaryRequestFilters {
         default,
         skip_serializing_if = "::std::option::Option::is_none"
     )]
-    pub min_most_recent_tx: ::std::option::Option<::chrono::DateTime<::chrono::offset::Utc>>,
+    pub min_most_recent_tx: ::std::option::Option<
+        ::chrono::DateTime<::chrono::offset::Utc>,
+    >,
     ///Array of specific token contract addresses to include
     #[serde(
         rename = "tokenContractAddresses",

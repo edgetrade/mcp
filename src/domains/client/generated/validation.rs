@@ -1,57 +1,57 @@
 // Auto-generated - do not edit manually
-use super::routes::requests::agent_change_encrypted_wallets;
-use super::routes::requests::agent_create_encrypted_wallet;
-use super::routes::requests::agent_delete_encrypted_wallet;
-use super::routes::requests::agent_get_transport_key;
-use super::routes::requests::agent_list_encrypted_wallets;
-use super::routes::requests::agent_proof_game;
-use super::routes::requests::agent_rotate_user_encryption_key;
-use super::routes::requests::intelligence_screen_tokens;
-use super::routes::requests::intelligence_search_swaps;
-use super::routes::requests::intelligence_search_tokens;
-use super::routes::requests::orders_apply_entry_strategy;
-use super::routes::requests::orders_apply_exit_strategy;
-use super::routes::requests::orders_cancel;
-use super::routes::requests::orders_cancel_all;
-use super::routes::requests::orders_create_entry_strategy;
-use super::routes::requests::orders_create_exit_strategy;
-use super::routes::requests::orders_get;
-use super::routes::requests::orders_list;
-use super::routes::requests::orders_list_entry_strategies;
-use super::routes::requests::orders_list_exit_strategies;
-use super::routes::requests::orders_place_limit_order;
-use super::routes::requests::orders_place_spot_order;
-use super::routes::requests::orders_remove_entry_strategy;
-use super::routes::requests::orders_remove_exit_strategy;
-use super::routes::requests::orders_update_entry_strategy;
-use super::routes::requests::orders_update_exit_strategy;
-use super::routes::requests::pairs_get_pair_candles;
-use super::routes::requests::pairs_get_pair_detailed;
-use super::routes::requests::pairs_get_pair_metrics;
-use super::routes::requests::pairs_get_swaps;
-use super::routes::requests::tokens_get_dev_tokens;
-use super::routes::requests::tokens_get_token_simple;
-use super::routes::requests::tokens_get_top_holders;
-use super::routes::requests::tokens_get_top_traders;
-use super::routes::requests::wallet_get_holding_history;
-use super::routes::requests::wallet_get_holdings;
-use super::routes::requests::wallet_get_native_balances;
-use super::routes::requests::wallet_get_summary;
-use super::routes::requests::wallet_get_wallet_swaps;
-use super::routes::subscriptions::alerts_on_memescope;
-use super::routes::subscriptions::alerts_on_order_updates;
-use super::routes::subscriptions::alerts_on_pair_swaps;
-use super::routes::subscriptions::alerts_on_pair_updates;
-use super::routes::subscriptions::alerts_on_ping;
-use super::routes::subscriptions::alerts_on_portfolio_updates;
-use super::routes::subscriptions::alerts_on_token_updates;
-use super::routes::subscriptions::alerts_on_wallet_swaps;
-use crate::client::IrisClient;
 use crate::client::Route;
+use crate::client::IrisClient;
 use crate::messages::IrisClientError;
 use serde_json::Value;
 use std::future::Future;
 use std::pin::Pin;
+use super::routes::requests::orders_get;
+use super::routes::requests::orders_list;
+use super::routes::requests::agent_list_encrypted_wallets;
+use super::routes::requests::orders_list_entry_strategies;
+use super::routes::requests::orders_remove_entry_strategy;
+use super::routes::requests::agent_delete_encrypted_wallet;
+use super::routes::requests::orders_cancel;
+use super::routes::requests::pairs_get_pair_metrics;
+use super::routes::requests::intelligence_screen_tokens;
+use super::routes::requests::pairs_get_pair_detailed;
+use super::routes::requests::wallet_get_wallet_swaps;
+use super::routes::requests::intelligence_search_swaps;
+use super::routes::requests::agent_rotate_user_encryption_key;
+use super::routes::requests::agent_proof_game;
+use super::routes::requests::wallet_get_holdings;
+use super::routes::requests::tokens_get_top_traders;
+use super::routes::requests::tokens_get_top_holders;
+use super::routes::requests::orders_place_limit_order;
+use super::routes::requests::wallet_get_summary;
+use super::routes::requests::pairs_get_pair_candles;
+use super::routes::requests::agent_create_encrypted_wallet;
+use super::routes::requests::orders_place_spot_order;
+use super::routes::requests::tokens_get_token_simple;
+use super::routes::requests::pairs_get_swaps;
+use super::routes::requests::orders_list_exit_strategies;
+use super::routes::requests::agent_get_transport_key;
+use super::routes::requests::orders_create_entry_strategy;
+use super::routes::requests::wallet_get_native_balances;
+use super::routes::requests::intelligence_search_tokens;
+use super::routes::requests::orders_update_exit_strategy;
+use super::routes::requests::orders_cancel_all;
+use super::routes::requests::orders_create_exit_strategy;
+use super::routes::requests::tokens_get_dev_tokens;
+use super::routes::requests::wallet_get_holding_history;
+use super::routes::requests::orders_remove_exit_strategy;
+use super::routes::requests::orders_apply_exit_strategy;
+use super::routes::requests::orders_apply_entry_strategy;
+use super::routes::requests::orders_update_entry_strategy;
+use super::routes::requests::agent_change_encrypted_wallets;
+use super::routes::subscriptions::alerts_on_token_updates;
+use super::routes::subscriptions::alerts_on_pair_swaps;
+use super::routes::subscriptions::alerts_on_portfolio_updates;
+use super::routes::subscriptions::alerts_on_ping;
+use super::routes::subscriptions::alerts_on_wallet_swaps;
+use super::routes::subscriptions::alerts_on_memescope;
+use super::routes::subscriptions::alerts_on_order_updates;
+use super::routes::subscriptions::alerts_on_pair_updates;
 /// Trait for route execution
 pub trait RouteValidator: Send + Sync {
     /// Returns the procedure name for this route
@@ -66,8 +66,7 @@ pub trait RouteValidator: Send + Sync {
 impl<
     I: serde::de::DeserializeOwned + serde::Serialize + Send + Sync,
     O: serde::de::DeserializeOwned + serde::Serialize + Clone + Send + Sync,
-> RouteValidator for Route<I, O>
-{
+> RouteValidator for Route<I, O> {
     fn procedure(&self) -> &'static str {
         self.procedure
     }
@@ -77,10 +76,12 @@ impl<
         data: Value,
     ) -> Pin<Box<dyn Future<Output = Result<Value, IrisClientError>> + Send + 'a>> {
         Box::pin(async move {
-            let input: I = serde_json::from_value(data).map_err(|e| IrisClientError::Deserialization(e.to_string()))?;
+            let input: I = serde_json::from_value(data)
+                .map_err(|e| IrisClientError::Deserialization(e.to_string()))?;
             use crate::client::RouteExecutor;
             let result: O = client.execute(self, &input).await?;
-            serde_json::to_value(result).map_err(|e| IrisClientError::Serialization(e.to_string()))
+            serde_json::to_value(result)
+                .map_err(|e| IrisClientError::Serialization(e.to_string()))
         })
     }
 }

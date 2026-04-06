@@ -81,6 +81,7 @@ pub use transport::{
 pub mod manifest;
 
 /// Generated route handlers
+#[rustfmt::skip]
 pub mod generated;
 
 // Re-export IrisClientError from messages module for backward compatibility

@@ -15,12 +15,18 @@ pub mod error {
     pub struct ConversionError(::std::borrow::Cow<'static, str>);
     impl ::std::error::Error for ConversionError {}
     impl ::std::fmt::Display for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Display::fmt(&self.0, f)
         }
     }
     impl ::std::fmt::Debug for ConversionError {
-        fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> Result<(), ::std::fmt::Error> {
+        fn fmt(
+            &self,
+            f: &mut ::std::fmt::Formatter<'_>,
+        ) -> Result<(), ::std::fmt::Error> {
             ::std::fmt::Debug::fmt(&self.0, f)
         }
     }
@@ -76,28 +82,28 @@ pub mod error {
 #[derive(::serde::Deserialize, ::serde::Serialize, Clone, Debug)]
 pub struct ScreenTokensRequestItem {
     /**Filter object for screening tokens. All fields are optional. Available fields: * pairTypes (array of pair type strings),
-     * isGraduated (boolean),
-     * includeKeywords/excludeKeywords (string arrays matched against name/symbol/address),
-     * minMarketcapUsd/maxMarketcapUsd,
-     * minLiquidityUsd/maxLiquidityUsd,
-     * minVolumeUsd24h/maxVolumeUsd24h,
-     * minVolumeUsd15m/maxVolumeUsd15m,
-     * minTransactionCount24h/maxTransactionCount24h,
-     * minTotalBuys24h/maxTotalBuys24h,
-     * minTotalSells24h/maxTotalSells24h,
-     * minGraduationProgressPercent/maxGraduationProgressPercent (0–100),
-     * minCreationTimestamp/maxCreationTimestamp (unix epoch seconds),
-     * contractAddressEndsInPump (boolean),
-     * hasTwitterUrl/hasWebsiteUrl/hasTelegramUrl/hasAnySocialUrl (boolean),
-     * dexscreenerPaidTokenProfile (boolean),
-     * minHolderCount/maxHolderCount,
-     * minSnipersHoldingPercentage/maxSnipersHoldingPercentage (0–100),
-     * minInsidersHoldingPercentage/maxInsidersHoldingPercentage (0–100),
-     * minTop10HoldingPercentage/maxTop10HoldingPercentage (0–100),
-     * minDeployerHoldingPercentage/maxDeployerHoldingPercentage (0–100),
-     * minDeployerPairs/maxDeployerPairs,
-     * minDeployerGraduatedPairs/maxDeployerGraduatedPairs,
-     * minPairPriceChangePercentage1h/maxPairPriceChangePercentage1h*/
+      * isGraduated (boolean),
+      * includeKeywords/excludeKeywords (string arrays matched against name/symbol/address),
+      * minMarketcapUsd/maxMarketcapUsd,
+      * minLiquidityUsd/maxLiquidityUsd,
+      * minVolumeUsd24h/maxVolumeUsd24h,
+      * minVolumeUsd15m/maxVolumeUsd15m,
+      * minTransactionCount24h/maxTransactionCount24h,
+      * minTotalBuys24h/maxTotalBuys24h,
+      * minTotalSells24h/maxTotalSells24h,
+      * minGraduationProgressPercent/maxGraduationProgressPercent (0–100),
+      * minCreationTimestamp/maxCreationTimestamp (unix epoch seconds),
+      * contractAddressEndsInPump (boolean),
+      * hasTwitterUrl/hasWebsiteUrl/hasTelegramUrl/hasAnySocialUrl (boolean),
+      * dexscreenerPaidTokenProfile (boolean),
+      * minHolderCount/maxHolderCount,
+      * minSnipersHoldingPercentage/maxSnipersHoldingPercentage (0–100),
+      * minInsidersHoldingPercentage/maxInsidersHoldingPercentage (0–100),
+      * minTop10HoldingPercentage/maxTop10HoldingPercentage (0–100),
+      * minDeployerHoldingPercentage/maxDeployerHoldingPercentage (0–100),
+      * minDeployerPairs/maxDeployerPairs,
+      * minDeployerGraduatedPairs/maxDeployerGraduatedPairs,
+      * minPairPriceChangePercentage1h/maxPairPriceChangePercentage1h*/
     pub filters: ::serde_json::Value,
     pub limit: f64,
     ///Column to sort results by (descending). Must be one of: "creation_timestamp" (newest tokens first) or "graduation_progress_percent" (closest to graduating first). Required.
@@ -120,7 +126,18 @@ pub struct ScreenTokensRequestItem {
 ///}
 /// ```
 /// </details>
-#[derive(::serde::Deserialize, ::serde::Serialize, Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[derive(
+    ::serde::Deserialize,
+    ::serde::Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd
+)]
 pub enum ScreenTokensRequestItemSortColumn {
     #[serde(rename = "creation_timestamp")]
     CreationTimestamp,
@@ -137,7 +154,9 @@ impl ::std::fmt::Display for ScreenTokensRequestItemSortColumn {
 }
 impl ::std::str::FromStr for ScreenTokensRequestItemSortColumn {
     type Err = self::error::ConversionError;
-    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn from_str(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         match value {
             "creation_timestamp" => Ok(Self::CreationTimestamp),
             "graduation_progress_percent" => Ok(Self::GraduationProgressPercent),
@@ -147,19 +166,27 @@ impl ::std::str::FromStr for ScreenTokensRequestItemSortColumn {
 }
 impl ::std::convert::TryFrom<&str> for ScreenTokensRequestItemSortColumn {
     type Error = self::error::ConversionError;
-    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &str,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<&::std::string::String> for ScreenTokensRequestItemSortColumn {
+impl ::std::convert::TryFrom<&::std::string::String>
+for ScreenTokensRequestItemSortColumn {
     type Error = self::error::ConversionError;
-    fn try_from(value: &::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
-impl ::std::convert::TryFrom<::std::string::String> for ScreenTokensRequestItemSortColumn {
+impl ::std::convert::TryFrom<::std::string::String>
+for ScreenTokensRequestItemSortColumn {
     type Error = self::error::ConversionError;
-    fn try_from(value: ::std::string::String) -> ::std::result::Result<Self, self::error::ConversionError> {
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
         value.parse()
     }
 }
