@@ -100,6 +100,7 @@ pub struct PairInfoRequest {
 ///    "isNativeTokenReferencePair",
 ///    "lastBlockSeen",
 ///    "liquidityUsd",
+///    "lpBurnedPercent",
 ///    "marketcapNativeToken",
 ///    "marketcapUsd",
 ///    "pairChainId",
@@ -224,6 +225,18 @@ pub struct PairInfoRequest {
 ///      "description": "The liquidity of the pair in USD",
 ///      "type": "number",
 ///      "name": "Liquidity USD"
+///    },
+///    "lpBurnedPercent": {
+///      "description": "LP burned percentage (0..100). 100 means fully burned",
+///      "anyOf": [
+///        {
+///          "type": "number"
+///        },
+///        {
+///          "type": "null"
+///        }
+///      ],
+///      "name": "LP Burned Percent"
 ///    },
 ///    "marketcapNativeToken": {
 ///      "description": "The marketcap of the pair in native token",
@@ -442,6 +455,9 @@ pub struct PairInfoResponse {
     pub last_block_seen: ::std::option::Option<f64>,
     #[serde(rename = "liquidityUsd")]
     pub liquidity_usd: f64,
+    ///LP burned percentage (0..100). 100 means fully burned
+    #[serde(rename = "lpBurnedPercent")]
+    pub lp_burned_percent: ::std::option::Option<f64>,
     #[serde(rename = "marketcapNativeToken")]
     pub marketcap_native_token: f64,
     #[serde(rename = "marketcapUsd")]

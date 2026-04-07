@@ -253,6 +253,16 @@ pub struct TokenInfoWithPricingRequest {
 ///                }
 ///              ]
 ///            },
+///            "lpBurnedPercent": {
+///              "anyOf": [
+///                {
+///                  "type": "number"
+///                },
+///                {
+///                  "type": "null"
+///                }
+///              ]
+///            },
 ///            "marketcapUsd": {
 ///              "anyOf": [
 ///                {
@@ -443,6 +453,40 @@ pub struct TokenInfoWithPricingRequest {
 ///                      "anyOf": [
 ///                        {
 ///                          "type": "string"
+///                        },
+///                        {
+///                          "type": "null"
+///                        }
+///                      ]
+///                    },
+///                    "freezable": {
+///                      "anyOf": [
+///                        {
+///                          "anyOf": [
+///                            {
+///                              "type": "boolean"
+///                            },
+///                            {
+///                              "type": "null"
+///                            }
+///                          ]
+///                        },
+///                        {
+///                          "type": "null"
+///                        }
+///                      ]
+///                    },
+///                    "mintable": {
+///                      "anyOf": [
+///                        {
+///                          "anyOf": [
+///                            {
+///                              "type": "boolean"
+///                            },
+///                            {
+///                              "type": "null"
+///                            }
+///                          ]
 ///                        },
 ///                        {
 ///                          "type": "null"
@@ -1391,6 +1435,16 @@ pub struct TokenInfoWithPricingResponse {
 ///        }
 ///      ]
 ///    },
+///    "lpBurnedPercent": {
+///      "anyOf": [
+///        {
+///          "type": "number"
+///        },
+///        {
+///          "type": "null"
+///        }
+///      ]
+///    },
 ///    "marketcapUsd": {
 ///      "anyOf": [
 ///        {
@@ -1575,6 +1629,12 @@ pub struct TokenInfoWithPricingResponsePair {
     pub liquidity_usd: ::std::option::Option<f64>,
     #[serde(rename = "logoUrl")]
     pub logo_url: ::std::option::Option<::std::string::String>,
+    #[serde(
+        rename = "lpBurnedPercent",
+        default,
+        skip_serializing_if = "::std::option::Option::is_none"
+    )]
+    pub lp_burned_percent: ::std::option::Option<f64>,
     #[serde(rename = "marketcapUsd")]
     pub marketcap_usd: ::std::option::Option<f64>,
     #[serde(rename = "migratedToPair")]
@@ -1753,6 +1813,40 @@ pub struct TokenInfoWithPricingResponsePairMigratedToPair {
 ///                  "anyOf": [
 ///                    {
 ///                      "type": "string"
+///                    },
+///                    {
+///                      "type": "null"
+///                    }
+///                  ]
+///                },
+///                "freezable": {
+///                  "anyOf": [
+///                    {
+///                      "anyOf": [
+///                        {
+///                          "type": "boolean"
+///                        },
+///                        {
+///                          "type": "null"
+///                        }
+///                      ]
+///                    },
+///                    {
+///                      "type": "null"
+///                    }
+///                  ]
+///                },
+///                "mintable": {
+///                  "anyOf": [
+///                    {
+///                      "anyOf": [
+///                        {
+///                          "type": "boolean"
+///                        },
+///                        {
+///                          "type": "null"
+///                        }
+///                      ]
 ///                    },
 ///                    {
 ///                      "type": "null"
@@ -2594,6 +2688,40 @@ pub struct TokenInfoWithPricingResponseToken {
 ///                }
 ///              ]
 ///            },
+///            "freezable": {
+///              "anyOf": [
+///                {
+///                  "anyOf": [
+///                    {
+///                      "type": "boolean"
+///                    },
+///                    {
+///                      "type": "null"
+///                    }
+///                  ]
+///                },
+///                {
+///                  "type": "null"
+///                }
+///              ]
+///            },
+///            "mintable": {
+///              "anyOf": [
+///                {
+///                  "anyOf": [
+///                    {
+///                      "type": "boolean"
+///                    },
+///                    {
+///                      "type": "null"
+///                    }
+///                  ]
+///                },
+///                {
+///                  "type": "null"
+///                }
+///              ]
+///            },
 ///            "refresh": {
 ///              "anyOf": [
 ///                {
@@ -3278,6 +3406,40 @@ pub struct TokenInfoWithPricingResponseTokenDetails {
 ///        }
 ///      ]
 ///    },
+///    "freezable": {
+///      "anyOf": [
+///        {
+///          "anyOf": [
+///            {
+///              "type": "boolean"
+///            },
+///            {
+///              "type": "null"
+///            }
+///          ]
+///        },
+///        {
+///          "type": "null"
+///        }
+///      ]
+///    },
+///    "mintable": {
+///      "anyOf": [
+///        {
+///          "anyOf": [
+///            {
+///              "type": "boolean"
+///            },
+///            {
+///              "type": "null"
+///            }
+///          ]
+///        },
+///        {
+///          "type": "null"
+///        }
+///      ]
+///    },
 ///    "refresh": {
 ///      "anyOf": [
 ///        {
@@ -3335,6 +3497,10 @@ pub struct TokenInfoWithPricingResponseTokenDetails {
 pub struct TokenInfoWithPricingResponseTokenDetailsContract {
     #[serde(rename = "byteCode")]
     pub byte_code: ::std::option::Option<::std::string::String>,
+    #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+    pub freezable: ::std::option::Option<bool>,
+    #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+    pub mintable: ::std::option::Option<bool>,
     #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
     pub refresh: ::std::option::Option<
         TokenInfoWithPricingResponseTokenDetailsContractRefresh,
