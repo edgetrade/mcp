@@ -85,12 +85,12 @@ jobs:
         run: |
           perl -i -0pe 's/^members = \[.*?\]/members = [\n  "pkg\/erato",\n  "pkg\/poseidon",\n]/ms' brain/Cargo.toml
 
-      - name: Configure host compiler for cross-compilation
-        if: matrix.build.target == 'aarch64-unknown-linux-musl'
-        run: echo "HOST_CC=gcc" >> $GITHUB_ENV
-
       - name: Build Release
         uses: zijiren233/cargo-cross@v1
+        env:
+          CC_aarch64_unknown_linux_musl: ${{ matrix.build.target == 'aarch64-unknown-linux-musl' && 'aarch64-linux-musl-gcc' || '' }}
+          AR_aarch64_unknown_linux_musl: ${{ matrix.build.target == 'aarch64-unknown-linux-musl' && 'aarch64-linux-musl-ar' || '' }}
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: ${{ matrix.build.target == 'aarch64-unknown-linux-musl' && 'aarch64-linux-musl-gcc' || '' }}
         with:
           targets: ${{ matrix.build.target }}
           working-directory: brain
@@ -100,30 +100,21 @@ jobs:
           profile: release
           bin: edge
 
-      - name: Prepare linux binaries for upload
-        if: matrix.build.os == 'ubuntu-latest'
-        working-directory: brain
+      - name: Prepare binary for upload
         run: |
           tree -L 4 brain
           if [ -f target/${{ matrix.build.target }}/release/edge ]; then
-            rsync --archive --mkpath target/${{ matrix.build.target }}/release/edge dist/edge-${{ steps.tagger.outputs.tag }}-${{ matrix.build.target }}
+            rsync --archive --mkpath target/${{ matrix.build.target }}/release/edge brain/dist/edge-${{ steps.tagger.outputs.tag }}-${{ matrix.build.target }}
           elif [ -f target/${{ matrix.build.target }}/release/edge.exe ]; then
-            rsync --archive --mkpath target/${{ matrix.build.target }}/release/edge.exe dist/edge-${{ steps.tagger.outputs.tag }}-${{ matrix.build.target }}.exe
+            rsync --archive --mkpath target/${{ matrix.build.target }}/release/edge.exe brain/dist/edge-${{ steps.tagger.outputs.tag }}-${{ matrix.build.target }}.exe
           fi
           tree -L 4 target
-
-      - name: Prepare macos binaries for upload
-        if: matrix.build.os == 'macos-latest'
-        working-directory: brain
-        run: |
-          mkdir -p dist/edge-${{ steps.tagger.outputs.tag }}-${{ matrix.build.target }}
-          rsync --archive target/${{ matrix.build.target }}/release/edge dist/edge-${{ steps.tagger.outputs.tag }}-${{ matrix.build.target }}/
       
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.build.target }}
-          path: brain/dist/*
+          path: dist/*
 
   publish-github:
     name: Publish to GitHub
