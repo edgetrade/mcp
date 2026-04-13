@@ -2,9 +2,8 @@
 
 Poseidon is the Edge Trade CLI and MCP (Model Context Protocol) server for blockchain trading and alerting. It provides secure wallet management, trade execution, and AI agent integration through an actor-based architecture.
 
-**Package:** `@edgedottrade/mcp`  
-**Binary:** `edge`  
-**Entry Points:** `src/main.rs` (CLI), `src/lib.rs` (library API)
+**Package:** `@edgedottrade/edge`  
+**Binary:** `edge`
 
 ---
 

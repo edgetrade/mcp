@@ -104,13 +104,12 @@ jobs:
         if: matrix.build.os == 'ubuntu-latest'
         working-directory: brain
         run: |
-          tree -L 4 brain
+          tree -L 4 target
           if [ -f target/${{ matrix.build.target }}/release/edge ]; then
             rsync --archive --mkpath target/${{ matrix.build.target }}/release/edge dist/edge-${{ steps.tagger.outputs.tag }}-${{ matrix.build.target }}
           elif [ -f target/${{ matrix.build.target }}/release/edge.exe ]; then
             rsync --archive --mkpath target/${{ matrix.build.target }}/release/edge.exe dist/edge-${{ steps.tagger.outputs.tag }}-${{ matrix.build.target }}.exe
           fi
-          tree -L 4 target
 
       - name: Prepare macos binaries for upload
         if: matrix.build.os == 'macos-latest'
