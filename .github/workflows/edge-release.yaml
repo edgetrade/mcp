@@ -114,9 +114,9 @@ jobs:
         if: matrix.build.os == 'macos-latest'
         working-directory: brain
         run: |
-          mkdir -p dist/edge-${{ steps.tagger.outputs.tag }}-${{ matrix.build.target }}
+          mkdir -p dist
           cp target/${{ matrix.build.target }}/release/edge dist/edge-${{ steps.tagger.outputs.tag }}-${{ matrix.build.target }}
-      
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
