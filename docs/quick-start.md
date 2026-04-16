@@ -1,79 +1,60 @@
 # Quick Start
 
+Get the Edge MCP server running in your AI client in four steps.
+
+```mermaid
+flowchart LR
+    A[1. Get API key<br/>edge.trade/settings] --> B[2. Install MCP server<br/>npx @edgedottrade/edge]
+    B --> C[3. Configure client<br/>Claude, Cursor, VS Code, etc.]
+    C --> D[4. Verify<br/>make your first call]
+```
+
 ## Installation
 
-### Option 1: npm (easiest)
+### Option 1: npm (recommended)
 
 ```bash
-npx @edgedottrade/mcp --help
+npx -y @edgedottrade/edge --help
 ```
 
-No installation required! The npm wrapper automatically downloads the correct binary for your platform.
+The npm package downloads the native Rust binary for your platform on first run. The installed binary is called `edge`.
 
-### Option 2: Claude Desktop Plugin
+### Option 2: From source
 
 ```bash
-/plugin marketplace add edgedottrade/mcp
-/plugin install edge@edgedottrade/mcp
+git clone https://github.com/edgetrade/edge.git
+cd edge
+cargo build --release
 ```
 
-Configure your API key when prompted, and the plugin will be ready to use.
-
-### Option 3: OpenClaw Skill
-
-```bash
-claw skill install edge
-```
-
-Or add to your `clawhub.yaml`:
-
-```yaml
-skills:
-  - edge
-```
-
-### Option 4: cargo
-
-```bash
-cargo install edge-trade
-```
-
-### Option 5: From source
-
-```bash
-git clone https://github.com/edgetrade/mcp.git
-cd mcp
-cargo build --release -p edge-trade
-```
+The built binary is at `./target/release/edge`. Pass `--api-key sk-...` to run it.
 
 ## Get API Key
 
-Visit [https://app.trade.edge/settings/api-keys](https://app.trade.edge/settings/api-keys) to create an API key.
+Visit [https://edge.trade/settings/api-keys](https://edge.trade/settings/api-keys) to create an API key.
 
 ## Configuration
 
 ### Claude Desktop
-
-If you installed via npm or cargo (not using the plugin):
 
 ```json
 {
   "mcpServers": {
     "edge": {
       "command": "npx",
-      "args": ["-y", "@edgedottrade/mcp", "--api-key", "sk-your-key-here"]
+      "args": ["-y", "@edgedottrade/edge", "--api-key", "sk-your-key-here"]
     }
   }
 }
 ```
 
-Or with cargo:
+If you built from source, point at the binary directly:
 
 ```json
 {
   "mcpServers": {
     "edge": {
-      "command": "edge",
+      "command": "/path/to/edge",
       "args": ["--api-key", "sk-your-key-here"]
     }
   }
@@ -89,7 +70,7 @@ Add to your MCP settings:
   "mcpServers": {
     "edge": {
       "command": "npx",
-      "args": ["-y", "@edgedottrade/mcp", "--api-key", "sk-your-key-here"]
+      "args": ["-y", "@edgedottrade/edge", "--api-key", "sk-your-key-here"]
     }
   }
 }
@@ -104,7 +85,7 @@ Add to your `config.json`:
   "mcpServers": {
     "edge": {
       "command": "npx",
-      "args": ["-y", "@edgedottrade/mcp", "--api-key", "sk-your-key-here"]
+      "args": ["-y", "@edgedottrade/edge", "--api-key", "sk-your-key-here"]
     }
   }
 }
@@ -156,16 +137,16 @@ Remove the line to re-trigger auto-detection.
 Test the installation:
 
 ```bash
-npx @edgedottrade/mcp --api-key sk-your-key-here help search
+npx -y @edgedottrade/edge --api-key sk-your-key-here help search
 ```
 
-Or if installed via cargo:
+Or if you built from source:
 
 ```bash
-edge --api-key sk-your-key-here help search
+./target/release/edge --api-key sk-your-key-here help search
 ```
 
-With the plugin installed, just ask your agent to:
+Once your AI client is configured, just ask it:
 
 ```md
 Search for tokens on Base

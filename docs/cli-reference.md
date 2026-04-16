@@ -5,8 +5,10 @@ Unified command-line interface for Edge Trade.
 ## Installation
 
 ```bash
-cargo install edge-trade
+npx -y @edgedottrade/edge --help
 ```
+
+The npm package downloads the native Rust binary for your platform on first run. The installed binary is called `edge`.
 
 ## Global Flags
 
@@ -48,12 +50,12 @@ Remove the line to re-trigger auto-detection on next run.
 
 ## Session Storage
 
-The CLI automatically detects OS keyring availability:
+The CLI picks a storage backend on first run:
 
-1. **First run**: Probes keyring, caches result in config
-2. **Keyring available**: Stores session keys securely
-3. **Keyring unavailable**: Falls back to file storage with warning
-4. **Override**: Edit config to force keyring or file mode
+1. **First run**: checks the keyring, caches the result in config
+2. **Keyring available**: stores session keys in the keyring
+3. **Keyring unavailable**: falls back to a file and warns you
+4. **Override**: edit config to force keyring or file mode
 
 ## Key Management
 

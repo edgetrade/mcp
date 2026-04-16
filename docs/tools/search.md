@@ -1,137 +1,56 @@
-# Search
+# search
 
-Search tokens by name or address.
+MCP tool name: `intelligence` (this page is named `search.md` historically; the actual tool you invoke is `intelligence`)
 
-## Purpose
+Token and swap discovery across 8 chains.
 
-Find tokens across supported chains by fuzzy-matching token names, symbols, or addresses. Returns paginated results with metadata for further inspection.
+## Actions
 
-## Inputs
+| Action | Purpose |
+|--------|---------|
+| `search_tokens` | Find tokens by name, symbol, or contract address |
+| `screen_tokens` | Filter tokens by onchain metrics (Solana only): see [screen](./screen.md) |
+| `search_swaps` | Look up recent swap transactions |
 
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| chainId | string | Yes | — | Numeric chain ID: `"1"` (Ethereum), `"8453"` (Base), `"42161"` (Arbitrum) |
-| query | string | Yes | — | Search term: token name, symbol, or address (0x...) |
-| limit | number | No | 50 | Max results (1–100) |
-| offset | number | No | 0 | Pagination offset |
-
-## Output
-
-Returns array of tokens with:
-- `address` — token address (checksummed)
-- `symbol` — token symbol
-- `name` — token name
-- `decimals` — decimal places
-- `chainId` — numeric chain ID
-- `liquidity` — total USD liquidity (null if unknown)
-- `volume24h` — 24h trading volume in USD (null if <1h old)
-
-## Examples
-
-### Example 1: Find USDC
-
-**Natural language**: Search for USDC on Base chain
+## Call format
 
 ```json
-{
-  "method": "market.searchTokens",
-  "params": {
-    "chainId": "8453",
-    "query": "USDC"
-  }
-}
+{"action": "search_tokens", "schema": 1, "data": {
+  "search": "PEPE",
+  "chainId": "solana",
+  "hasGraduated": true,
+  "pairTypes": null,
+  "weightings": null
+}}
 ```
 
-**Response excerpt**:
-```json
-{
-  "result": [
-    {
-      "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-      "symbol": "USDC",
-      "name": "USDC Coin",
-      "decimals": 6,
-      "chainId": "8453",
-      "liquidity": 150000000,
-      "volume24h": 45000000
-    }
-  ]
-}
-```
+- `chainId` is `"solana"` (string) or a number for EVM chains
+- The parameter is `search`, not `query`
+- Optional: `hasGraduated`, `pairTypes`, `weightings`
 
-### Example 2: Search by partial name
-
-**Natural language**: Find all tokens with "dog" in the name on Ethereum
+## Resolving by contract address
 
 ```json
-{
-  "method": "market.searchTokens",
-  "params": {
-    "chainId": "1",
-    "query": "dog",
-    "limit": 10
-  }
-}
+{"action": "search_tokens", "schema": 1, "data": {
+  "search": "So11111111111111111111111111111111111111112",
+  "chainId": "solana"
+}}
 ```
 
-**Response excerpt**:
-```json
-{
-  "result": [
-    {
-      "address": "0x6b175474e89094c44da98b954eedeac495271d0f",
-      "symbol": "DAI",
-      "name": "Dai Stablecoin",
-      "decimals": 18,
-      "chainId": "1",
-      "liquidity": 2500000000,
-      "volume24h": 800000000
-    }
-  ]
-}
-```
-
-### Example 3: Search by address
-
-**Natural language**: Look up Arbitrum USDC by its contract address
+## Looking up a specific swap
 
 ```json
-{
-  "method": "market.searchTokens",
-  "params": {
-    "chainId": "42161",
-    "query": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5F86"
-  }
-}
+{"action": "search_swaps", "schema": 1, "data": {
+  "chainId": "solana",
+  "txHash": "5UfDuX7hXbAjRMn2z9M3G2bqT7KLhRYmkCFRJubXpam3RqKMD1gzFbGeackCkAFVJ8oCBVxbJFuhEqaVxKsFdNFr",
+  "blockTimestamp": 1710000000
+}}
 ```
 
-**Response excerpt**:
-```json
-{
-  "result": [
-    {
-      "address": "0xFF970A61A04b1cA14834A43f5dE4533eBDDB5F86",
-      "symbol": "USDC.e",
-      "name": "Bridged USDC",
-      "decimals": 6,
-      "chainId": "42161",
-      "liquidity": 80000000,
-      "volume24h": 25000000
-    }
-  ]
-}
-```
+Both `txHash` and `blockTimestamp` are required to look up a swap.
 
-## Mistakes
+## Related
 
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `NOT_FOUND` | Chain ID is invalid or not supported | Use numeric strings: `"1"`, `"8453"`, `"42161"` |
-| Empty array | Query is too specific or no matches exist | Broaden search term; try symbol or name fragments |
-| `RATE_LIMIT` | Too many requests from this IP/key | Reduce request frequency; batch searches when possible |
-
-## See also
-
-- [Token → pair](../agent-patterns.md#pattern-2-token--pair) — use token address from search result
-- [inspect](./inspect.md) — full token analytics after search
-- [concepts](../concepts.md) — address formats, chain ID reference
+- [screen](./screen.md): onchain-metric filtering (Solana only)
+- [Agent Patterns → Chain ID format](../agent-patterns.md#pattern-3-chain-id-format)
+- [Concepts → Address formats](../concepts.md#address-formats)

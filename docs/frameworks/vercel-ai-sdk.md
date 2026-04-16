@@ -15,7 +15,7 @@ import { Experimental_StdioMCPTransport as StdioTransport } from 'ai/mcp-stdio';
 const client = await createMCPClient({
   transport: new StdioTransport({ 
     command: 'npx',
-    args: ['-y', '@edgedottrade/mcp', '--api-key', 'sk-your-key-here']
+    args: ['-y', '@edgedottrade/edge', '--api-key', 'sk-your-key-here']
   }),
 });
 

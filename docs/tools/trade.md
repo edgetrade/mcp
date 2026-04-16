@@ -1,286 +1,171 @@
-# Trade
+# trade
 
-Limit orders, entry/exit strategies, price impact.
+MCP tool name: `orders` (this page is named `trade.md` historically; the actual tool you invoke is `orders`)
 
-## Purpose
+Place and manage orders. Trading is live with a 1% trading fee (10% discount with a referral code).
 
-Place and manage limit orders. Includes entry/exit strategy framework for automated trading on price targets. Requires API key authentication.
+The orders namespace exposes 16 actions. The two that place new orders are `place_limit_order` (waits for a trigger) and `place_spot_order` (executes immediately).
 
-## Price-Resolution Workflow
+## Actions
 
-Before placing orders, the system must resolve execution prices from multiple sources to protect against MEV and slippage.
+| Action | Purpose |
+|--------|---------|
+| `place_limit_order` | Place a limit order (triggers on price or market cap) |
+| `place_spot_order` | Place a spot order (executes immediately) |
+| `list_orders` | List orders for a wallet (filter by status, type, chain, dates) |
+| `order` | Fetch a single order by ID |
+| `cancel_order` | Cancel a single open order by task ID |
+| `cancel_all_orders` | Cancel every active limit order for the caller |
+| `apply_entry_strategy` | Attach a saved entry strategy to a token |
+| `apply_exit_strategy` | Attach a saved exit strategy to a token |
+| `create_entry_strategy` | Create a reusable buy/DCA strategy |
+| `create_exit_strategy` | Create a reusable TP/SL strategy |
+| `list_entry_strategies` | List your saved entry strategies |
+| `list_exit_strategies` | List your saved exit strategies |
+| `update_entry_strategy` | Update a saved entry strategy |
+| `update_exit_strategy` | Update a saved exit strategy |
+| `remove_entry_strategy` | Delete an entry strategy |
+| `remove_exit_strategy` | Delete an exit strategy |
 
-**Workflow**:
+## Placing a limit order
 
-1. **Agent submits order** with target price (`price` field)
-2. **System fetches current pair metrics** from DEX (Uniswap V3, etc.)
-3. **Compare prices**: if market price is better, upgrade to market price
-4. **Validate slippage**: ensure target price is within slippage tolerance
-5. **Place order** on DEX via SDK integration
-
-**Example**:
-```
-Agent: "Buy 10 USDC worth of GEM at $0.50"
-→ System: Pair metrics show current price is $0.48
-→ Resolved: Buy at $0.48 (better than target)
-→ Order placed with slippage limit 1%
-```
-
-## Inputs (varies by operation)
-
-### Place order
-
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| chainId | string | Yes | — | Numeric chain ID |
-| pair | string | Yes | — | Pair address (not token; use inspect to find) |
-| side | enum | Yes | — | `"buy"` or `"sell"` |
-| quantity | string | Yes | — | Amount to trade (wei format) |
-| price | string | Yes | — | Target price (wei format) |
-| slippage | number | No | 0.01 | Slippage tolerance (0.01 = 1%) |
-| expiresAt | number | No | +1h | Order expiry (Unix timestamp) |
-
-### List orders
-
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| wallet | string | Yes | — | Wallet address |
-| chainId | string | No | — | Filter to chain (omit for all) |
-| status | enum | No | — | `"open"`, `"filled"`, `"cancelled"` (omit for all) |
-| limit | number | No | 50 | Results per page |
-
-### Cancel order
-
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| orderId | string | Yes | — | Order ID to cancel |
-
-### Entry strategy
-
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| name | string | Yes | — | Strategy name |
-| pair | string | Yes | — | Pair address |
-| chainId | string | Yes | — | Numeric chain ID |
-| entryPrice | string | Yes | — | Trigger price (wei) |
-| quantity | string | Yes | — | Amount to buy |
-| slippage | number | No | 0.01 | Slippage tolerance |
-
-### Exit strategy
-
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| name | string | Yes | — | Strategy name |
-| pair | string | Yes | — | Pair address |
-| exitPrice | string | Yes | — | Trigger price (wei) |
-| quantity | string | Yes | — | Amount to sell |
-| profitTarget | number | No | — | Optional % gain target |
-
-## Output
-
-### Place order returns
-
-```typescript
-{
-  orderId: string;
-  status: "pending" | "submitted" | "filled" | "cancelled";
-  filledAmount: string; // wei
-  filledPrice: string; // wei
-  resolvedPrice: string; // price after resolution workflow
-  timestamp: number;
-}
-```
-
-### List orders returns
-
-```typescript
-[
-  {
-    orderId: string;
-    chainId: string;
-    pair: string;
-    side: "buy" | "sell";
-    quantity: string;
-    price: string;
-    filledAmount: string;
-    status: "open" | "filled" | "cancelled";
-    createdAt: number;
-    expiresAt: number;
-  }
-]
-```
-
-## Examples
-
-### Example 1: Place simple limit order
-
-**Natural language**: Buy 100 tokens at $0.50 on Base
+Triggers on price or market cap. Both `order` and `envelope` may be required by the server; check the live `tools/list` response on your client for the current schema. The shape of the `order` object:
 
 ```json
-{
-  "method": "orders.place",
-  "params": {
-    "chainId": "8453",
-    "pair": "0x7f5c764cbc14f9669b88837ca1490cca17c31607",
+{"action": "place_limit_order", "schema": 1, "data": {
+  "order": {
+    "tokenId": {
+      "tokenChainId": "solana",
+      "tokenContractAddress": "EPjFWdd5Au..."
+    },
     "side": "buy",
-    "quantity": "100000000000000000000",
-    "price": "500000000000000000",
-    "slippage": 0.01
+    "amount": {"type": "native", "value": 100000000},
+    "pairAddress": "HWy1jotHpo6U...",
+    "counterTokenAddress": null,
+    "expiration": 3600,
+    "exitStrategyId": null,
+    "entryStrategyId": null,
+    "wallets": [{"address": "7xKXtg2CW8..."}],
+    "txPreset": {
+      "method": "normal",
+      "slippage": 15,
+      "maxBaseGas": 0,
+      "priorityGas": 0,
+      "bribe": 0,
+      "key": "a"
+    },
+    "triggerTokenPriceUsd": "0.0015",
+    "triggerMarketcapUsd": null
   }
-}
+}}
 ```
 
-**Response excerpt**:
+Set either `triggerTokenPriceUsd` or `triggerMarketcapUsd` (or both for a dual trigger). For immediate execution, use `place_spot_order` instead — its `order.triggerTokenPriceUsd` is omitted and the order fills against current market price.
+
+## Placing a spot order
+
 ```json
-{
-  "result": {
-    "orderId": "order_abc123",
-    "status": "submitted",
-    "filledAmount": "100000000000000000000",
-    "filledPrice": "510000000000000000",
-    "resolvedPrice": "510000000000000000",
-    "timestamp": 1702000650
-  }
-}
+{"action": "place_spot_order", "schema": 1, "data": {
+  "order": { "...same shape as above..." },
+  "envelope": "<encrypted-intent-envelope>"
+}}
 ```
 
-### Example 2: Sell existing holdings
+`place_spot_order` requires both `order` and `envelope`. The envelope is an encrypted intent your client constructs to commit to the trade parameters before the server executes — see [Security: How Edge Keeps Your Keys Safe](../../security/how-edge-keeps-your-keys-safe.md) for the model.
 
-**Natural language**: Sell 5 WETH at market on Ethereum
+## Required `order` fields
+
+- `tokenId.tokenChainId` + `tokenId.tokenContractAddress`: the token you are trading
+- `side`: `"buy"` or `"sell"`
+- `amount`: an object with `type` and `value`
+- `pairAddress`: the pair to route through; resolve via `token_info_with_pricing`
+- `wallets`: array of `{address}` (each must be registered to your API key)
+- `txPreset`: all six fields required (even if zero). `method`, `slippage`, `maxBaseGas`, `priorityGas`, `bribe`, `key`
+- `expiration`: TTL in seconds (e.g., 3600 for one hour)
+
+### Amount types
+
+| `amount.type` | `amount.value` unit |
+|---------------|---------------------|
+| `native` | Lamports (Solana) or wei (EVM) as a number |
+| `token` | Token's smallest denomination |
+| `percentage` | 1-100, percent of current holdings |
+
+## Listing orders
 
 ```json
-{
-  "method": "orders.place",
-  "params": {
-    "chainId": "1",
-    "pair": "0x88e6A0c2dDD26FEEb64F039a2c41296FcB3f5640",
-    "side": "sell",
-    "quantity": "5000000000000000000",
-    "price": "2000000000000000000000",
-    "slippage": 0.02
-  }
-}
+{"action": "list_orders", "schema": 1, "data": {
+  "status": "Working",
+  "type": "limit",
+  "limit": 20,
+  "chainId": "solana",
+  "tokenAddresses": [],
+  "wallets": [],
+  "taskIds": [],
+  "includeHidden": false,
+  "withToken": false
+}}
 ```
 
-**Response excerpt**:
-```json
-{
-  "result": {
-    "orderId": "order_def456",
-    "status": "filled",
-    "filledAmount": "5000000000000000000",
-    "filledPrice": "2010000000000000000000",
-    "resolvedPrice": "2010000000000000000000",
-    "timestamp": 1702000700
-  }
-}
-```
+The response wraps results in `{items: [], next}`; unwrap with `data.items`.
 
-### Example 3: List open orders
+Valid `status`: `Working`, `Placing`, `Filled`, `Cancelled`, `Expired`, `Rejected`.
 
-**Natural language**: Show all pending orders on Base
+## Strategies
+
+Entry strategies fire buys when price drops by set percentages (DCA). Exit strategies fire sells at take-profit or stop-loss levels. Strategies are reusable: create one, then `apply_entry_strategy` or `apply_exit_strategy` to attach it to a specific token.
 
 ```json
-{
-  "method": "orders.list",
-  "params": {
-    "wallet": "0x1234567890123456789012345678901234567890",
-    "chainId": "8453",
-    "status": "open"
-  }
-}
-```
-
-**Response excerpt**:
-```json
-{
-  "result": [
-    {
-      "orderId": "order_abc123",
-      "chainId": "8453",
-      "pair": "0x7f5c764cbc14f9669b88837ca1490cca17c31607",
-      "side": "buy",
-      "quantity": "100000000000000000000",
-      "price": "500000000000000000",
-      "filledAmount": "0",
-      "status": "open",
-      "createdAt": 1702000650,
-      "expiresAt": 1702004250
-    }
-  ]
-}
-```
-
-### Example 4: Create entry strategy (DCA-style)
-
-**Natural language**: Set up auto-buy: buy 50 tokens if price drops below $0.45
-
-```json
-{
-  "method": "orders.createEntryStrategy",
-  "params": {
+// Entry strategy: DCA on dips. Note nested under `entry_strategy`.
+{"action": "create_entry_strategy", "schema": 1, "data": {
+  "entry_strategy": {
     "name": "DCA Buy",
-    "pair": "0x7f5c764cbc14f9669b88837ca1490cca17c31607",
-    "chainId": "8453",
-    "entryPrice": "450000000000000000",
-    "quantity": "50000000000000000000",
-    "slippage": 0.01
+    "chainId": "solana",
+    "steps": [
+      {"buyAmountNativeToken": 50000000,  "percentToTrigger": 10},
+      {"buyAmountNativeToken": 100000000, "percentToTrigger": 25}
+    ]
   }
-}
+}}
+
+// Exit strategy: TP + SL. Nested under `exit_strategy`. No chainId.
+{"action": "create_exit_strategy", "schema": 1, "data": {
+  "exit_strategy": {
+    "name": "TP+SL",
+    "steps": [{
+      "tpPercentToTrigger": 100,
+      "tpPercentOfBagToSell": 50,
+      "tpPercentOfCostToSell": null,
+      "slPercentToTrigger": 30,
+      "slPercentToSell": 100
+    }]
+  }
+}}
+
+// Then attach to a token
+{"action": "apply_entry_strategy", "schema": 1, "data": {
+  "entryStrategyId": "<from create response>",
+  "tokenChainId": "solana",
+  "tokenContractAddress": "EPjFWdd5Au..."
+}}
 ```
 
-**Response excerpt**:
-```json
-{
-  "result": {
-    "strategyId": "strat_xyz789",
-    "status": "active",
-    "createdAt": 1702000650
-  }
-}
-```
+`percentToTrigger` is a positive number representing a percentage move.
 
-### Example 5: Create exit strategy (take-profit)
+See [Concepts: Strategy](../concepts.md#strategy) for the step shape.
 
-**Natural language**: Auto-sell if price reaches $1.50 or profit hits 50%
-
-```json
-{
-  "method": "orders.createExitStrategy",
-  "params": {
-    "name": "Take Profit 50%",
-    "pair": "0x7f5c764cbc14f9669b88837ca1490cca17c31607",
-    "exitPrice": "1500000000000000000",
-    "quantity": "100000000000000000000",
-    "profitTarget": 50
-  }
-}
-```
-
-**Response excerpt**:
-```json
-{
-  "result": {
-    "strategyId": "strat_tp123",
-    "status": "active",
-    "createdAt": 1702000750
-  }
-}
-```
-
-## Mistakes
+## Common errors
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `NOT_IMPLEMENTED` | Execution not yet live | Trading coming soon; see status updates |
-| `INSUFFICIENT_BALANCE` | Wallet lacks enough tokens | Check portfolio holdings first |
-| `SLIPPAGE_EXCEEDED` | Price moved beyond tolerance | Increase slippage or retry with better price |
-| `PAIR_NOT_FOUND` | Pair address invalid | Use inspect to find canonical pair |
-| `ORDER_EXPIRED` | Order timed out waiting for fill | Reduce `expiresAt` duration; check liquidity |
+| `INSUFFICIENT_BALANCE` | Wallet lacks enough tokens | Check `wallet_holdings` first |
+| `SLIPPAGE_EXCEEDED` | Price moved beyond tolerance | Increase `txPreset.slippage` or retry |
+| `PAIR_NOT_FOUND` | Invalid pair address | Resolve via `token_info_with_pricing` |
+| `ORDER_EXPIRED` | Order timed out | Increase `expiration` or verify liquidity |
+| `INVALID_CHAIN` | Bad chain ID | EVM uses numbers, Solana uses `"solana"` |
 
 ## See also
 
-- [Price before order](../agent-patterns.md#pattern-1-price-before-order) — always check metrics first
-- [inspect](./inspect.md) — pair_metrics for current prices
-- [portfolio](./portfolio.md) — check holdings before selling
-- [alerts](./alerts.md) — subscribe to order fill notifications
+- [Agent Patterns: Price before order](../agent-patterns.md#pattern-1-price-before-order)
+- [Concepts: Order / Strategy](../concepts.md#order)
+- [portfolio](./portfolio.md): check holdings before selling

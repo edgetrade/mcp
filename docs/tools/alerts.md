@@ -1,324 +1,84 @@
-# Alerts
+# alerts
 
-Subscribe, poll, unsubscribe; webhook delivery supported.
+Real-time alert subscriptions for market, wallet, and order events. Edge supports push delivery to webhook, Redis stream, or Telegram.
 
-## Purpose
+{% hint style="warning" %}
+Alert registration is **configured in the Edge webapp** (Settings > Alerts), not via MCP actions. The MCP server exposes the catalog of available alert types as a read-only resource at `edge://alerts`, but registration / listing / cancellation of alerts happens through the webapp UI.
+{% endhint %}
 
-Real-time and polling-based subscriptions to market events, portfolio updates, and order fills. Supports both WebSocket (push) and HTTP webhook (push) delivery, with polling fallback for stateless agents.
+## How the system fits together
 
-## Alert Types
+```mermaid
+flowchart LR
+    UI[Edge webapp<br/>Settings > Alerts] --> Reg[Edge platform]
+    Reg --> Watch[Event watcher]
+    Watch --> Webhook[Your HTTPS endpoint]
+    Watch --> Redis[Redis stream]
+    Watch --> Telegram[Telegram chat]
+    MCP[MCP server] -. exposes .-> Catalog[edge://alerts<br/>resource: alert types only]
+```
 
-| Type | Inputs | Description |
-|------|--------|-------------|
-| `pair_state` | chainId, pairAddress | Price, liquidity, and volume updates for a pair |
-| `pair_metrics` | chainId, pairAddress, interval (1m/5m/1h) | OHLC candle closes |
-| `pair_swaps` | chainId, pairAddress | Individual swap events on a pair |
-| `token_updates` | chainId, tokenAddress | Token metadata changes and activity spikes |
-| `token_holders` | chainId, tokenAddress | Holder concentration changes, whale movements |
-| `wallet_swaps` | walletAddresses (array) | Any trade from monitored wallets |
-| `portfolio_updates` | walletAddress, chainId (optional) | Holdings changes, new positions |
-| `memescope` | filters (optional) | New meme token listings and activity |
-| `order_updates` | walletAddress | Order state changes (submitted, filled, cancelled) |
+Use the MCP `edge://alerts` resource from your agent to read the **catalog** of alert types your account can subscribe to. Configure the actual subscription (and delivery target) in the webapp.
 
-## Subscription Lifecycle
+## Reading the alert catalog from MCP
 
-### Step 1: Subscribe (once per session)
+The `edge://alerts` resource returns the available alert types and the input schema each one requires. From a typical MCP client:
+
+```text
+resource: edge://alerts
+```
+
+A minimal example using JSON-RPC over stdio:
 
 ```json
-{
-  "method": "alerts.subscribe",
-  "params": {
-    "alert_type": "price",
-    "chainId": "8453",
-    "address": "0x..."
-  }
-}
+{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"edge://alerts"}}
 ```
 
-Returns: `{ subscription_id: "sub_abc123" }`
+Parse the response to enumerate alert names and required `input` fields.
 
-### Step 2: Poll (each agent turn)
+## Alert types (catalog)
 
-```json
-{
-  "method": "alerts.poll",
-  "params": {
-    "subscription_id": "sub_abc123"
-  }
-}
-```
+The live catalog ships in `edge://alerts`. At time of writing the platform exposes:
 
-Returns: Array of buffered events (max 1000 per poll)
+| Alert name | What it streams |
+|---|---|
+| `on_pair_updates` | Pair price, liquidity, volume (`type: "metrics"`) or pair state (`type: "state"`) |
+| `on_pair_swaps` | Every swap on a specific pair |
+| `on_wallet_swaps` | Every swap on one or more wallet addresses |
+| `on_token_updates` | Token events, e.g. `type: "holders"` for holder distribution changes |
+| `on_portfolio_updates` | Wallet holdings changes as buys/sells/transfers are detected |
+| `on_order_updates` | Order status: fills, cancellations, rejections |
+| `on_memescope` | Live Memescope token discoveries |
 
-### Step 3: Unsubscribe (on cleanup)
+Verify against `edge://alerts` for the current set and per-alert input schemas.
 
-```json
-{
-  "method": "alerts.unsubscribe",
-  "params": {
-    "subscription_id": "sub_abc123"
-  }
-}
-```
+## Delivery targets
 
-## Inputs (by method)
+Configure one of three delivery targets per alert in the webapp:
 
-### Subscribe
+- **Webhook** — POST each event to an HTTPS endpoint with HMAC signature verification. See [Webhooks](../webhooks.md).
+- **Redis stream** — push each event onto a Redis stream your backend consumes. See [Redis stream delivery](../redis-streams.md).
+- **Telegram** — send formatted notifications to a chat or group.
 
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| alert_type | enum | Yes | — | Type from table above |
-| chainId | string | Conditional | — | Required for most types (check table) |
-| address | string | Conditional | — | Token/pair address (check type) |
-| walletAddress | string | Conditional | — | For portfolio/order alerts |
-| walletAddresses | array | Conditional | — | For wallet_swaps (multiple) |
-| interval | string | Conditional | — | For pair_metrics: `1m`, `5m`, `1h` |
-| filters | object | Conditional | — | For memescope: `{ mcap_range: [min, max], ... }` |
+The delivery side is documented per channel; the receiver-side payload shape and verification code is the same regardless of how the alert was registered.
 
-### Poll
+## Polling alternatives from MCP
 
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| subscription_id | string | Yes | — | From subscribe response |
+If you want event-driven behavior **inside an agent** without running a separate webhook receiver, poll the relevant action on a cadence:
 
-### Register webhook
+| Need | Poll this action |
+|---|---|
+| Wallet swaps | `wallet.wallet_swaps` |
+| Pair swaps | `pairs.pair_swaps` |
+| Pair metrics | `pairs.pair_metrics` |
+| Order status | `orders.list_orders` (filter by `status` and `taskIds`) |
+| Holdings change | `wallet.wallet_holdings` |
 
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| alert_type | enum | Yes | — | Type to monitor |
-| webhookUrl | string | Yes | — | HTTP(S) endpoint to POST to |
-| webhookSecret | string | No | — | HMAC secret for validation |
-| chainId | string | Conditional | — | Chain filter |
-| address | string | Conditional | — | Token/pair filter |
-| threshold | number | No | — | % change threshold for triggers |
+Diff each result against the previous poll and act on what changed. Cadence depends on latency budget and rate limits — 10–30 s is reasonable for active wallets and pairs. See [Errors: Rate limits](../errors.md#rate-limiting).
 
-## Output
+## Related
 
-### Subscribe returns
-
-```typescript
-{
-  subscription_id: string;
-  status: "active" | "pending";
-  createdAt: number;
-  expiresAt: number; // session timeout
-}
-```
-
-### Poll returns
-
-```typescript
-[
-  {
-    event: string; // e.g., "pair_state_update"
-    data: any; // event-specific payload
-    timestamp: number;
-  }
-]
-```
-
-### Webhook POST body
-
-```typescript
-{
-  event: string;
-  data: any;
-  timestamp: number;
-  signature: string; // HMAC-SHA256(body, secret)
-}
-```
-
-## Examples
-
-### Example 1: Subscribe to pair price updates
-
-**Natural language**: Watch Base USDC/ETH pair for price changes
-
-```json
-{
-  "method": "alerts.subscribe",
-  "params": {
-    "alert_type": "pair_state",
-    "chainId": "8453",
-    "pairAddress": "0x7f5c764cbc14f9669b88837ca1490cca17c31607"
-  }
-}
-```
-
-**Response**:
-
-```json
-{
-  "result": {
-    "subscription_id": "sub_pair123",
-    "status": "active",
-    "createdAt": 1702000650,
-    "expiresAt": 1702084650
-  }
-}
-```
-
-### Example 2: Poll for buffered events
-
-**Natural language**: Check for new price updates
-
-```json
-{
-  "method": "alerts.poll",
-  "params": {
-    "subscription_id": "sub_pair123"
-  }
-}
-```
-
-**Response excerpt**:
-
-```json
-{
-  "result": [
-    {
-      "event": "pair_state_update",
-      "data": {
-        "price": 1.0055,
-        "liquidity": 12600000,
-        "volume24h": 8950000
-      },
-      "timestamp": 1702000720
-    }
-  ]
-}
-```
-
-### Example 3: Subscribe to token activity spikes
-
-**Natural language**: Alert on memescope: new trending meme tokens
-
-```json
-{
-  "method": "alerts.subscribe",
-  "params": {
-    "alert_type": "memescope",
-    "filters": {
-      "mcap_range": [100000, 10000000],
-      "min_volume_24h": 50000
-    }
-  }
-}
-```
-
-**Response**:
-
-```json
-{
-  "result": {
-    "subscription_id": "sub_meme456",
-    "status": "active",
-    "createdAt": 1702000650,
-    "expiresAt": 1702084650
-  }
-}
-```
-
-### Example 4: Portfolio webhook (push delivery)
-
-**Natural language**: Send portfolio changes to my server
-
-```json
-{
-  "method": "alerts.registerWebhook",
-  "params": {
-    "alert_type": "portfolio_updates",
-    "webhookUrl": "https://my-agent-server.com/webhooks/portfolio",
-    "webhookSecret": "whsec_abc123xyz789",
-    "walletAddress": "0x1234567890123456789012345678901234567890",
-    "chainId": "8453"
-  }
-}
-```
-
-**Response**:
-
-```json
-{
-  "result": {
-    "subscription_id": "webhook_pf789",
-    "status": "active",
-    "createdAt": 1702000650,
-    "expiresAt": 1702084650
-  }
-}
-```
-
-### Example 5: Order fill notifications
-
-**Natural language**: Get alerts when orders fill
-
-```json
-{
-  "method": "alerts.subscribe",
-  "params": {
-    "alert_type": "order_updates",
-    "walletAddress": "0x1234567890123456789012345678901234567890"
-  }
-}
-```
-
-**Response**:
-
-```json
-{
-  "result": {
-    "subscription_id": "sub_orders789",
-    "status": "active",
-    "createdAt": 1702000650,
-    "expiresAt": 1702084650
-  }
-}
-```
-
-Then poll:
-
-```json
-{
-  "method": "alerts.poll",
-  "params": {
-    "subscription_id": "sub_orders789"
-  }
-}
-```
-
-**Response excerpt**:
-
-```json
-{
-  "result": [
-    {
-      "event": "order_updated",
-      "data": {
-        "orderId": "order_abc123",
-        "status": "filled",
-        "filledAmount": "100000000000000000000",
-        "filledPrice": "510000000000000000"
-      },
-      "timestamp": 1702000720
-    }
-  ]
-}
-```
-
-## Mistakes
-
-| Error | Cause | Fix |
-|-------|-------|-----|
-| `SUBSCRIPTION_EXPIRED` | Session timed out (default 24h) | Re-subscribe; configure longer timeout if needed |
-| `BUFFER_FULL` | 1000+ events queued (ring buffer capped) | Poll more frequently |
-| `WEBHOOK_DELIVERY_FAILED` | Endpoint returned 4xx/5xx | Check webhook URL and ensure endpoint is reachable |
-| `INVALID_FILTER` | Filter schema mismatch | Check filter format for alert type |
-| `RATE_LIMIT` | Too many concurrent subscriptions | Consolidate subscriptions; unsubscribe unused |
-
-## See also
-
-- [Subscription lifecycle](../agent-patterns.md#pattern-4-subscription-lifecycle) — subscribe once, poll each turn, cleanup
-- [Memescope](../agent-patterns.md#pattern-6-memescope) — snapshot + live feed
-- [trade](./trade.md) — place orders on alert triggers
-- [portfolio](./portfolio.md) — monitor holdings changes
+- [Subscriptions](../subscriptions.md): delivery-mode overview
+- [Webhooks](../webhooks.md): webhook delivery with HMAC verification
+- [Redis stream delivery](../redis-streams.md): consume events from a Redis stream
+- [Errors](../errors.md): subscription error codes
