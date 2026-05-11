@@ -14,7 +14,7 @@
   },
   "homepage": "https://docs.edge.trade/agents",
   "scripts": {
-    "postinstall": "node scripts/download-binary.js"
+    "postinstall": "node scripts/download-binary.mjs"
   },
   "keywords": [
     "mcp",

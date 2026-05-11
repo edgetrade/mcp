@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import { chmodSync, createWriteStream, mkdirSync } from 'node:fs';
-import { get } from 'node:https';
 import { dirname, join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
@@ -45,44 +44,19 @@ async function downloadBinary() {
 
   const outputPath = join(binariesDir, filename);
 
-  return new Promise((resolve, reject) => {
-    get(url, (response) => {
-      if (response.statusCode === 302 || response.statusCode === 301) {
-        // Follow redirect
-        get(response.headers.location, (redirectResponse) => {
-          if (redirectResponse.statusCode !== 200) {
-            reject(new Error(`Download failed with status ${redirectResponse.statusCode}`));
-            return;
-          }
+  const res = await fetch(url, { redirect: 'follow' });
+  if (!res.ok) {
+    throw new Error(`Download failed: ${res.status} ${res.statusText}`);
+  }
 
-          const fileStream = createWriteStream(outputPath);
-          pipeline(redirectResponse, fileStream)
-            .then(() => {
-              // Make executable on Unix
-              if (process.platform !== 'win32') {
-                chmodSync(outputPath, 0o755);
-              }
-              console.log('✓ Binary downloaded successfully');
-              resolve();
-            })
-            .catch(reject);
-        }).on('error', reject);
-      } else if (response.statusCode === 200) {
-        const fileStream = createWriteStream(outputPath);
-        pipeline(response, fileStream)
-          .then(() => {
-            if (process.platform !== 'win32') {
-              chmodSync(outputPath, 0o755);
-            }
-            console.log('✓ Binary downloaded successfully');
-            resolve();
-          })
-          .catch(reject);
-      } else {
-        reject(new Error(`Download failed with status ${response.statusCode}`));
-      }
-    }).on('error', reject);
-  });
+  const fileStream = createWriteStream(outputPath);
+  await pipeline(res.body, fileStream);
+
+  if (process.platform !== 'win32') {
+    chmodSync(outputPath, 0o755);
+  }
+
+  console.log('✓ Binary downloaded successfully');
 }
 
 downloadBinary().catch((error) => {
