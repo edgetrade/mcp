@@ -12,7 +12,7 @@
     "type": "git",
     "url": "git+https://github.com/edgetrade/edge.git"
   },
-  "homepage": "https://docs.edge.trade/agents",
+  "homepage": "https://edge-trade.gitbook.io/agents",
   "scripts": {
     "postinstall": "node scripts/download-binary.mjs"
   },

@@ -73,7 +73,7 @@ The binary is downloaded from [GitHub Releases](https://github.com/edgetrade/mcp
 
 ## Documentation
 
-Full docs: [https://docs.edge.trade/agents](https://docs.edge.trade/agents)
+Full docs: [https://edge-trade.gitbook.io/agents](https://edge-trade.gitbook.io/agents)
 
 ## License
 

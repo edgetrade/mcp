@@ -22,4 +22,4 @@ Tools via `edge` MCP server (6 tools, 39 actions):
 3. **Chain IDs**: `8453` Base, `1` Ethereum, `42161` Arbitrum, `"solana"` Solana
 4. **Alerts**: configure in the Edge webapp (Settings > Alerts); deliver to webhook, Redis, or Telegram
 
-[Docs](https://docs.edge.trade/agents)
+[Docs](https://edge-trade.gitbook.io/agents)
